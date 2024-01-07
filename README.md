@@ -2,4 +2,5 @@
 
 
 ## Kinda Cheatsheets
-* [KOTLIN](https://github.com/Buchtl/cheatsheets/blob/main/kotlin.md)
+* [Kotlin](https://github.com/Buchtl/cheatsheets/blob/main/kotlin.md)
+* [GraphQL](https://github.com/Buchtl/cheatsheets/blob/main/graphql.md)
