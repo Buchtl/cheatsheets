@@ -69,3 +69,24 @@ Here are some common types of lexical tokens:
 6. **Comments:** Text in the source code that is not meant for execution but provides information to developers. Comments are typically ignored during lexing.
 
 Lexical tokens are the input for the subsequent phase of the compilation process known as parsing. The parser uses the tokens to build a syntactic structure, such as an abstract syntax tree (AST), which represents the hierarchical structure of the source code according to the language's grammar rules.
+
+## What are lookahead restrictions?
+In the context of parsing and compiler construction, lookahead restrictions refer to limitations on the number of tokens that a parser can examine ahead in the input stream before making a parsing decision. The "lookahead" is the number of tokens the parser peeks at to decide how to proceed with parsing.
+
+Lookahead restrictions are often associated with certain parsing techniques and parsing algorithms. Here are a few common scenarios:
+
+1. **LL(k) Parsing:**
+   - In LL(k) parsing, the parser looks at the next k tokens in the input stream to decide which production rule to apply. The "LL" stands for "left-to-right, leftmost derivation," and the "k" represents the number of tokens of lookahead.
+   - Lookahead restrictions in LL(k) parsers can limit the grammars they can handle. Larger values of k allow more complex grammars to be parsed, but they may increase the complexity of the parser.
+
+2. **LL(1) Parsing:**
+   - LL(1) parsing is a specific case where the parser uses only one token of lookahead. This simplifies the parsing process but imposes restrictions on the grammars that can be parsed.
+   - The LL(1) restriction helps in making parsing decisions without ambiguity but may rule out certain types of grammars that require more lookahead.
+
+3. **LR(k) Parsing:**
+   - In LR(k) parsing, the parser looks at the next k tokens and uses this information to decide how to shift, reduce, or perform other parsing actions.
+   - Similar to LL(k) parsing, larger values of k in LR(k) allow the parser to handle more complex grammars, but they also increase the computational complexity.
+
+The choice of lookahead value is a trade-off between simplicity and expressive power. Smaller lookahead values simplify parsing algorithms but restrict the grammars that can be parsed. Larger lookahead values can handle more complex grammars but may result in more computationally intensive parsing algorithms.
+
+Parser generators often allow specifying lookahead values, and the choice depends on the grammar and language being parsed. Some parsing algorithms, such as LALR(1) and SLR(1), aim to strike a balance between simplicity and expressive power in handling lookahead.
