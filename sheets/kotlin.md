@@ -11,3 +11,14 @@
     // 'length' will be 0 if 'nullableString' is null
     println("Length is $length")
     ```
+
+* Return
+    ``` kotlin
+    val stuff = runBlocking {
+        return@runBlocking "stuff"
+    }
+
+    val stuff2 = goblin@{
+        return@goblin "stuff2"
+    }
+    ```
