@@ -1,6 +1,6 @@
 ## Reminder 2024-01-15
 
-* [see springdoc](https://docs.spring.io/spring-graphql/reference/transports.html) 
+* [see springdoc](https://docs.spring.io/spring-graphql/reference/transports.html)  and [git project](https://github.com/spring-projects/spring-graphql/tree/1.0.x/samples/webflux-websocket)
 
 
 
