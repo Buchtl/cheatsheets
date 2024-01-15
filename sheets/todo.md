@@ -1,3 +1,10 @@
+## Reminder 2024-01-15
+
+* [see springdoc](https://docs.spring.io/spring-graphql/docs/1.0.6/reference/html/#server-websocket)
+  
+
+GraphQlWebSocketHandler can be exposed as a WebSocket endpoint by declaring a SimpleUrlHandlerMapping bean and using it to map the handler to a URL path. By default, the Boot starter does not expose a GraphQL over WebSocket endpoint, but it’s easy to enable it by adding a property for the endpoint path. Please, see the Web Endpoints section for details, or check the GraphQlWebMvcAutoConfiguration or the GraphQlWebFluxAutoConfiguration for the actual Boot starter config.
+#
 ## Reminder / TODO 2024-01-14
 ```
 <dependencies>
