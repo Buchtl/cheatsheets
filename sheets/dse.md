@@ -164,18 +164,6 @@ After the restore is complete, start DSE again:
 ./bin/dse start
 ```
 
-### Important Notes:
-
-* Ensure that the backup files are available and accessible during the restore process.
-
-* Verify the success of the restore process by checking DSE logs and monitoring the cluster status.
-
-* Make sure the restored data is consistent and accurate. It's advisable to perform additional checks and validations after the restore.
-
-* Consider testing the restore process in a non-production environment before applying it to a production system.
-
-* Always refer to the official documentation for the specific version of DSE you are using for the most accurate and up-to-date information.
-
 # how to authorize using nodetool when using a datastax dse?
 In DataStax Enterprise (DSE), nodetool commands often require authentication and authorization to perform various administrative tasks on the Apache Cassandra cluster. Here are the general steps for authorizing nodetool commands in a DSE environment:
 
