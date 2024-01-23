@@ -4,26 +4,26 @@
 
 The default ports used by DataStax OpsCenter and DataStax Enterprise (DSE) are as follows:
 
-    OpsCenter:
-        OpsCenter Web Console: Port 8888 (HTTP) or 8443 (HTTPS)
-        OpsCenter Agents communicate with the OpsCenter server on port 61620 by default.
+#### OpsCenter:
+* OpsCenter Web Console: Port 8888 (HTTP) or 8443 (HTTPS)
+* OpsCenter Agents communicate with the OpsCenter server on port 61620 by default.
 
-    It's important to note that port numbers can be configured during the installation or in the OpsCenter configuration files. Therefore, it's possible that these default ports may be different in your specific deployment.
+It's important to note that port numbers can be configured during the installation or in the OpsCenter configuration files. Therefore, it's possible that these default ports may be different in your specific deployment.
 
-    DataStax Enterprise (DSE):
-        Cassandra native transport (CQL): Port 9042 (default)
-        Thrift client API: Port 9160 (default)
-        JMX (Java Management Extensions): Port 7199 (default)
-        DSE Search Solr HTTP: Port 8983 (default)
-        DSE Search Solr Transport: Port 8984 (default)
-        DSE Graph Gremlin Server: Port 8182 (default)
+#### DataStax Enterprise (DSE):
+* Cassandra native transport (CQL): Port 9042 (default)
+* Thrift client API: Port 9160 (default)
+* JMX (Java Management Extensions): Port 7199 (default)
+* DSE Search Solr HTTP: Port 8983 (default)
+* DSE Search Solr Transport: Port 8984 (default)
+* DSE Graph Gremlin Server: Port 8182 (default)
 
-    Similar to OpsCenter, port numbers for DSE can be customized during installation or in the configuration files. It's essential to review the specific configuration of your OpsCenter and DSE instances to determine the exact port numbers in use.
+Similar to OpsCenter, port numbers for DSE can be customized during installation or in the configuration files. It's essential to review the specific configuration of your OpsCenter and DSE instances to determine the exact port numbers in use.
 
 # what is cql?
 CQL stands for Cassandra Query Language. It is a query language designed for interacting with Apache Cassandra, a highly scalable and distributed NoSQL database system. CQL provides a more SQL-like interface for Cassandra, making it easier for developers who are familiar with relational databases to work with Cassandra.
 
-Key features of CQL include:
+### Key features of CQL include:
 
 * SQL-Like Syntax: CQL adopts a syntax that is similar to SQL (Structured Query Language), making it more familiar to developers with experience in relational databases. This includes concepts such as tables, rows, and columns.
 
