@@ -209,3 +209,54 @@ Ensure that the user account you are using for nodetool commands has the necessa
 ```
 
 Replace myadmin and mypassword with the actual username and password of a user with the required permissions.
+
+
+
+# how to configure the agent when the database is running inside a docker container?
+
+When your database is running inside a Docker container, and you want to configure the OpsCenter Agent to monitor that database, you'll need to ensure proper network connectivity and configure the OpsCenter Agent accordingly. Here are the general steps:
+
+#### Network Configuration:
+Ensure that the Docker container running your database is accessible from the host machine and that the necessary ports are open for communication.
+
+##### Determine Docker Container IP:
+
+Find the IP address of your Docker container. You can use the following command:
+
+```bash
+docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' <container_name_or_id>
+```
+
+Replace <container_name_or_id> with the actual name or ID of your Docker container.
+
+#### Configure OpsCenter Agent:
+
+Edit the conf/opscenterd.conf file in the OpsCenter Agent directory.
+
+Set the agent_stomp_interface and agent_stomp_port parameters to the IP address and port where the OpsCenter Agent can communicate with the Docker container.
+
+```bash
+[agents]
+agent_stomp_interface = <container_ip>
+agent_stomp_port = 61620
+```
+
+Replace <container_ip> with the actual IP address of your Docker container.
+
+Set other necessary parameters such as the OpsCenter server address, datastax-agent address, and any other relevant configurations.
+```
+#### Restart OpsCenter Agent:
+
+Restart the OpsCenter Agent for the changes to take effect.
+
+```bash
+sudo bin/opscenter-agent stop
+sudo bin/opscenter-agent start
+```
+
+#### Use sudo if necessary, depending on your system's permissions.
+
+#### Verify Connectivity:
+
+Check the OpsCenter Agent logs to ensure there are no errors related to connectivity.
+Log in to the OpsCenter web interface and verify that the agent is visible and communicating with the OpsCenter server.
