@@ -61,3 +61,102 @@ However, this is more typical for session-based authentication and less common w
 4. If OAuth2 Proxy uses **cookies** for authentication, these cookies might be sent automatically, depending on your setup, but that depends on how your GraphQL server handles authentication.
 
 For a more seamless experience with tokens, you can configure your React app to read the tokens from a secure storage mechanism (like `localStorage` or `sessionStorage`) and set the header appropriately for each GraphQL request.
+
+
+# Combining apollo and axa-fr/react-oidc
+
+To obtain the OIDC authentication token using the `@axa-fr/react-oidc` framework and use it for your Apollo GraphQL requests, you need to access the OIDC token from the OIDC context provided by the framework. Then, you can use this token in the `Authorization` header when making GraphQL requests.
+
+Here's a step-by-step guide:
+
+### Step 1: Set Up `@axa-fr/react-oidc` Provider
+Ensure that your React app is wrapped with the `OidcProvider` from the `@axa-fr/react-oidc` library. This makes the OIDC context available throughout your app.
+
+```javascript
+import { OidcProvider } from '@axa-fr/react-oidc';
+import { BrowserRouter as Router } from 'react-router-dom';
+
+const oidcConfiguration = {
+  client_id: '<your-client-id>',
+  redirect_uri: 'http://localhost:3000/auth/callback',
+  scope: 'openid profile email',
+  authority: 'https://your-oidc-provider',
+  response_type: 'code',
+};
+
+function App() {
+  return (
+    <OidcProvider configuration={oidcConfiguration}>
+      <Router>
+        {/* Your routes and components */}
+      </Router>
+    </OidcProvider>
+  );
+}
+```
+
+Make sure you replace `client_id` and `authority` with the appropriate values for your OIDC provider.
+
+### Step 2: Access the OIDC Token
+You can use the `useOidcAccessToken` hook provided by `@axa-fr/react-oidc` to access the OIDC access token. Here’s how you can use this in a custom Apollo Client setup:
+
+```javascript
+import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
+import { setContext } from '@apollo/client/link/context';
+import { useOidcAccessToken } from '@axa-fr/react-oidc';
+
+const httpLink = createHttpLink({
+  uri: 'http://localhost:3000/graphql', // Replace with your GraphQL endpoint
+});
+
+const useAuthenticatedApolloClient = () => {
+  const { accessToken } = useOidcAccessToken();
+
+  const authLink = setContext((_, { headers }) => {
+    // Include the OIDC token in the headers
+    return {
+      headers: {
+        ...headers,
+        authorization: accessToken ? `Bearer ${accessToken}` : "",
+      },
+    };
+  });
+
+  const client = new ApolloClient({
+    link: authLink.concat(httpLink),
+    cache: new InMemoryCache(),
+  });
+
+  return client;
+};
+
+export default useAuthenticatedApolloClient;
+```
+
+### Step 3: Use the Apollo Client in Your App
+Now you can use the `useAuthenticatedApolloClient` hook to get an instance of the Apollo Client that includes the OIDC access token in the headers:
+
+```javascript
+import React from 'react';
+import { ApolloProvider } from '@apollo/client';
+import useAuthenticatedApolloClient from './useAuthenticatedApolloClient';
+
+function MyApp() {
+  const client = useAuthenticatedApolloClient();
+
+  return (
+    <ApolloProvider client={client}>
+      {/* Your components that use Apollo Client */}
+    </ApolloProvider>
+  );
+}
+
+export default MyApp;
+```
+
+### Summary:
+- Use `@axa-fr/react-oidc`’s `useOidcAccessToken` to get the OIDC access token.
+- Create an Apollo Client instance that adds this token to the `Authorization` header using an Apollo `authLink`.
+- Use this customized Apollo Client in your React application to make authenticated GraphQL requests.
+
+This approach ensures that your GraphQL queries include the OIDC access token for authorization, allowing your server to verify the user's identity and permissions.
