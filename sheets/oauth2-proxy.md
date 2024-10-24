@@ -150,3 +150,116 @@ Summary
     To preserve the Authorization header set in your React app, ensure `OAUTH2_PROXY_SET_AUTHORIZATION_HEADER` is set to false in your docker-compose.yml.
 
 This configuration will make sure that any Authorization header you set manually in the React app is respected when requests are forwarded by the OAuth2 proxy.
+
+
+# USER-INFO
+To access user information like `preferred_username` in your React app when using `oauth2-proxy`, the typical approach is to configure `oauth2-proxy` to include specific user details in the headers of proxied requests. Then, these headers can be read by your backend service or, in some cases, directly by your React app if the information is exposed.
+
+Here’s how you can achieve this:
+
+### Step 1: Configure `oauth2-proxy` to Pass User Information
+You need to set up `oauth2-proxy` to include user information as headers in the proxied requests. This is done using the `OAUTH2_PROXY_SET_XAUTHREQUEST` configuration, which adds a series of `X-Auth-Request-*` headers to the forwarded requests. This setting allows the proxy to pass user details such as `preferred_username`.
+
+In your `docker-compose.yml`:
+
+```yaml
+services:
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.2.1
+    environment:
+      OAUTH2_PROXY_PROVIDER: "oidc" # or the provider you are using
+      OAUTH2_PROXY_CLIENT_ID: "<your-client-id>"
+      OAUTH2_PROXY_CLIENT_SECRET: "<your-client-secret>"
+      OAUTH2_PROXY_COOKIE_SECRET: "<a-random-secret>"
+      OAUTH2_PROXY_UPSTREAMS: "http://your-backend-service:8080"
+      OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:4180"
+      OAUTH2_PROXY_SET_XAUTHREQUEST: "true" # Enable passing user info as headers
+    ports:
+      - "4180:4180"
+```
+
+With `OAUTH2_PROXY_SET_XAUTHREQUEST` set to `true`, the following headers become available to your upstream (backend service):
+- `X-Auth-Request-User`: Typically the user's name or identifier.
+- `X-Auth-Request-Email`: The user's email address.
+- `X-Auth-Request-Preferred-Username`: The `preferred_username` claim from the OAuth2 token (if available).
+
+### Step 2: Make User Information Available to the React App
+Now that `oauth2-proxy` adds the user information as headers to requests, you have a couple of options for making this information accessible to your React app:
+
+#### Option 1: Expose User Info via a Custom Endpoint
+The most common way is to have your backend service expose an endpoint that reads these headers and returns the user information to the frontend. Here’s a simple example using an Express server as the backend:
+
+```javascript
+// server.js (Express server example)
+const express = require('express');
+const app = express();
+
+app.get('/user-info', (req, res) => {
+  // Extract user information from headers set by oauth2-proxy
+  const preferredUsername = req.headers['x-auth-request-preferred-username'];
+  const email = req.headers['x-auth-request-email'];
+  
+  res.json({
+    preferred_username: preferredUsername,
+    email: email,
+  });
+});
+
+app.listen(8080, () => {
+  console.log('Backend service running on port 8080');
+});
+```
+
+In this example, the `/user-info` endpoint reads the `X-Auth-Request-Preferred-Username` header and other user details set by `oauth2-proxy` and returns them as JSON.
+
+#### Option 2: Fetch User Information in Your React App
+In your React app, you can now make a request to the `/user-info` endpoint to retrieve the user's `preferred_username`:
+
+```javascript
+import React, { useEffect, useState } from 'react';
+
+const UserInfo = () => {
+  const [userInfo, setUserInfo] = useState(null);
+
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const response = await fetch('/user-info', {
+          method: 'GET',
+          credentials: 'include', // Ensure cookies are sent with the request
+        });
+        const data = await response.json();
+        setUserInfo(data);
+      } catch (error) {
+        console.error('Error fetching user info:', error);
+      }
+    };
+
+    fetchUserInfo();
+  }, []);
+
+  if (!userInfo) {
+    return <div>Loading user information...</div>;
+  }
+
+  return (
+    <div>
+      <p>Preferred Username: {userInfo.preferred_username}</p>
+      <p>Email: {userInfo.email}</p>
+    </div>
+  );
+};
+
+export default UserInfo;
+```
+
+In this code:
+- The `fetchUserInfo` function sends a request to the `/user-info` endpoint to retrieve the user details.
+- It then updates the state with the user's information, including `preferred_username`, which can be displayed in the React component.
+
+### Summary
+- **Step 1**: Set `OAUTH2_PROXY_SET_XAUTHREQUEST` to `true` to pass user information as headers.
+- **Step 2**: Create a backend endpoint that extracts user info from these headers.
+- **Step 3**: Call this endpoint from your React app to access and display user details like `preferred_username`.
+
+This approach ensures that the OAuth2 proxy handles authentication and the backend forwards the necessary user information securely to the frontend.
