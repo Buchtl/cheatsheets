@@ -117,3 +117,36 @@ To use Bitnami's OAuth2 Proxy container to secure a React application, you will 
 4. Optionally configure NGINX for better management in production.
 
 This setup ensures that users must authenticate with the OAuth2 provider before they can access your React app.
+
+
+# Overwrite Auth Header
+
+By default, if an Authorization header is set explicitly in your React app, the oauth2-proxy can overwrite it depending on its configuration. Specifically, the behavior is controlled by the following environment variables:
+Key Configurations for oauth2-proxy
+
+* `OAUTH2_PROXY_SET_AUTHORIZATION_HEADER`:
+
+    If this is set to true, oauth2-proxy will overwrite the Authorization header with its own token (Authorization: Bearer <token>).
+    If it is set to false, it should leave any existing Authorization header unchanged.
+
+* `OAUTH2_PROXY_PASS_ACCESS_TOKEN`:
+
+    When this is true, it passes the OAuth2 token to the upstream in either cookies or headers.
+    `If OAUTH2_PROXY_SET_AUTHORIZATION_HEADER` is also true, this will add or overwrite the Authorization header with the token.
+
+How to Prevent Overwriting
+
+If you want to ensure that the Authorization header you set in your React app remains unchanged when forwarded through oauth2-proxy, you should configure oauth2-proxy like this in your docker-compose.yml:
+
+```yaml
+environment:
+  OAUTH2_PROXY_SET_AUTHORIZATION_HEADER: "false" # Prevents overwriting the Authorization header
+  OAUTH2_PROXY_PASS_ACCESS_TOKEN: "false" # Optional: prevents the access token from being added automatically
+```
+By setting OAUTH2_PROXY_SET_AUTHORIZATION_HEADER to false, oauth2-proxy will not modify the Authorization header that comes from your React app.
+Summary
+
+* If `OAUTH2_PROXY_SET_AUTHORIZATION_HEADER` is true, oauth2-proxy will overwrite the Authorization header.
+    To preserve the Authorization header set in your React app, ensure `OAUTH2_PROXY_SET_AUTHORIZATION_HEADER` is set to false in your docker-compose.yml.
+
+This configuration will make sure that any Authorization header you set manually in the React app is respected when requests are forwarded by the OAuth2 proxy.
