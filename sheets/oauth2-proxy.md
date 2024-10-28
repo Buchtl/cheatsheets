@@ -263,3 +263,40 @@ In this code:
 - **Step 3**: Call this endpoint from your React app to access and display user details like `preferred_username`.
 
 This approach ensures that the OAuth2 proxy handles authentication and the backend forwards the necessary user information securely to the frontend.
+
+If you are getting a `302` (temporary redirect) response instead of a `301` (permanent redirect), the issue may be with the way the `RewriteRule` is configured or a potential conflict with another rule or configuration. To ensure a `301` redirect, you can make a few adjustments to your Apache configuration:
+
+### Updated Configuration:
+```apache
+<VirtualHost *:80>
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</VirtualHost>
+```
+
+### Things to Check when getting 302 instead 301:
+1. **Clear Browser Cache**: Browsers often cache redirects, especially `302` responses. Try clearing your browser cache or testing in incognito mode to ensure the new `301` response is applied.
+   
+2. **Check for Other Redirects**: Make sure there are no other configurations or `.htaccess` files that might contain a `Redirect` or `RewriteRule` causing a `302` response.
+
+3. **Explicitly Set the Status Code**: If the above rule is not forcing the `301`, try using a more explicit form:
+    ```apache
+    <VirtualHost *:80>
+        Redirect permanent / https://%{HTTP_HOST}/
+    </VirtualHost>
+    ```
+   This approach uses the `Redirect` directive, which is simpler and directly sets a `301` status.
+
+4. **Check Apache Logs**: If it's still returning a `302`, check the Apache error and access logs for any clues:
+   ```bash
+   sudo tail -f /var/log/apache2/error.log
+   sudo tail -f /var/log/apache2/access.log
+   ```
+
+5. **Restart Apache**: After making these changes, don't forget to restart Apache to ensure the new configuration is applied:
+    ```bash
+    sudo systemctl restart apache2
+    ```
+
+These adjustments should ensure that Apache sends a `301` redirect instead of a `302` when redirecting from HTTP to HTTPS.
