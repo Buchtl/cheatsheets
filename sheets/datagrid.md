@@ -85,3 +85,127 @@ export default ParentComponent;
    - Passes `rows`, `setRows`, and `columns` to the custom `MyDataGrid` component.
 
 This approach provides flexibility, allowing each parent component to control the data shown in `MyDataGrid` and perform custom reset operations as needed.
+
+
+# Graphql useQuery
+When using Apollo’s `useQuery` hook, you can load data from a GraphQL endpoint and then pass it into the reusable `MyDataGrid` component. The `useQuery` hook provides the data, loading state, and error handling, which you can integrate with your DataGrid component.
+
+Below is how you can adapt the code:
+
+### 1. Set up the GraphQL Query
+
+Assume you have a GraphQL query named `GET_ROWS` that retrieves your row data.
+
+```javascript
+import { gql, useQuery } from '@apollo/client';
+
+const GET_ROWS = gql`
+  query GetRows {
+    rows {
+      id
+      col1
+      col2
+    }
+  }
+`;
+```
+
+### 2. Modify the Parent Component to Use `useQuery`
+
+In the parent component, use the `useQuery` hook to fetch the data and handle loading and error states. Pass the fetched data to `MyDataGrid` once it's available.
+
+```javascript
+// ParentComponent.js
+import React, { useState, useEffect } from 'react';
+import { gql, useQuery } from '@apollo/client';
+import MyDataGrid from './MyDataGrid';
+
+const GET_ROWS = gql`
+  query GetRows {
+    rows {
+      id
+      col1
+      col2
+    }
+  }
+`;
+
+const ParentComponent = () => {
+  const { data, loading, error } = useQuery(GET_ROWS);
+  const [rows, setRows] = useState([]);
+  
+  useEffect(() => {
+    if (data) {
+      setRows(data.rows);
+    }
+  }, [data]);
+
+  const columns = [
+    { field: 'col1', headerName: 'Column 1', width: 150, editable: true },
+    { field: 'col2', headerName: 'Column 2', width: 150, editable: true },
+  ];
+
+  const resetRows = () => {
+    if (data) {
+      setRows(data.rows); // Reset to the original fetched data
+    }
+  };
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error loading data</p>;
+
+  return (
+    <div>
+      <MyDataGrid rows={rows} setRows={setRows} columns={columns} />
+      <button onClick={resetRows}>Reset Rows</button>
+    </div>
+  );
+};
+
+export default ParentComponent;
+```
+
+### 3. Modify the `MyDataGrid` Component to Work with Props
+
+This component remains largely the same, with props for `rows`, `setRows`, and `columns`.
+
+```javascript
+// MyDataGrid.js
+import React from 'react';
+import { DataGrid } from '@mui/x-data-grid';
+
+const MyDataGrid = ({ rows, setRows, columns }) => {
+  const handleCellEditCommit = (params) => {
+    const updatedRows = rows.map((row) =>
+      row.id === params.id ? { ...row, [params.field]: params.value } : row
+    );
+    setRows(updatedRows);
+  };
+
+  return (
+    <div style={{ height: 400, width: '100%' }}>
+      <DataGrid
+        rows={rows}
+        columns={columns}
+        pageSize={5}
+        checkboxSelection
+        onCellEditCommit={handleCellEditCommit}
+      />
+    </div>
+  );
+};
+
+export default MyDataGrid;
+```
+
+### Explanation
+
+1. **Apollo `useQuery` Hook**:
+   - Fetches the rows from your GraphQL API.
+   - When the data is available, it updates the `rows` state in the parent component.
+   - If there’s an error or if the data is loading, it shows a message instead of rendering the grid.
+
+2. **Data Resetting**:
+   - The `resetRows` function resets the `rows` state to the initially fetched data, leveraging the `data.rows` from the GraphQL query.
+
+This setup allows the `MyDataGrid` component to use any data fetched via GraphQL and be reusable across components.
