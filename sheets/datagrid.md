@@ -209,3 +209,63 @@ export default MyDataGrid;
    - The `resetRows` function resets the `rows` state to the initially fetched data, leveraging the `data.rows` from the GraphQL query.
 
 This setup allows the `MyDataGrid` component to use any data fetched via GraphQL and be reusable across components.
+
+Certainly! The line:
+
+```javascript
+row.id === params.id ? { ...row, [params.field]: params.value } : row
+```
+
+is part of a JavaScript expression called a *ternary operator*, used here to update the value of a specific field in a specific row when a cell edit occurs in the DataGrid. Let's break it down:
+
+### Context
+
+In the code, `params` comes from the `handleCellEditCommit` function, which is triggered whenever a cell edit is committed. The `params` object contains:
+- `params.id`: The `id` of the row where the edit occurred.
+- `params.field`: The field (column) name that was edited.
+- `params.value`: The new value that was entered into the cell.
+
+### Explanation of the Ternary Operation
+
+The expression:
+```javascript
+row.id === params.id ? { ...row, [params.field]: params.value } : row
+```
+
+is part of an array `.map()` operation. It checks each row to see if it is the row that needs updating (the one with an `id` matching `params.id`). 
+
+Here's what it does, step-by-step:
+
+1. **Condition** (`row.id === params.id`):
+   - Checks if the current `row`’s `id` matches `params.id`.
+   - If `true`, the row needs to be updated.
+   - If `false`, the row does not need updating, so it returns the row as is.
+
+2. **If `true`**:
+   - The row is updated using the syntax `{ ...row, [params.field]: params.value }`.
+   - `{ ...row }` creates a copy of the existing row object.
+   - `[params.field]: params.value` updates the specific field that was edited with the new value.
+   - This results in a new row object with only the edited field changed, leaving the other fields untouched.
+
+3. **If `false`**:
+   - The row is returned unchanged (`: row`).
+
+### Full Example in Context
+
+Here's how it works in the `handleCellEditCommit` function:
+
+```javascript
+const handleCellEditCommit = (params) => {
+  const updatedRows = rows.map((row) =>
+    row.id === params.id ? { ...row, [params.field]: params.value } : row
+  );
+  setRows(updatedRows); // Updates the DataGrid rows with the edited row
+};
+```
+
+In this function:
+- `rows.map(...)` iterates over each row.
+- Only the row with a matching `id` is updated.
+- The result, `updatedRows`, is a new array where only the edited row reflects the new cell value.
+
+This updated array is then set to `setRows`, causing the DataGrid to re-render with the modified data.
