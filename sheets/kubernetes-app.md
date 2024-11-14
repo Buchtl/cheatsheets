@@ -1,3 +1,42 @@
+# Example App
+Here's a simple YAML file to deploy a single container in a Pod on Kubernetes. This example uses an `httpd` container image:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: httpd-pod
+  labels:
+    app: httpd
+spec:
+  containers:
+    - name: httpd-container
+      image: httpd:latest
+      ports:
+        - containerPort: 80
+```
+
+### Explanation:
+
+- `apiVersion: v1`: Specifies the Kubernetes API version.
+- `kind: Pod`: Defines the resource type as a Pod.
+- `metadata`: Provides metadata for the Pod, including its `name` and `labels`.
+- `spec`: Specifies the Pod's configuration.
+  - `containers`: Defines the list of containers for this Pod.
+    - `name`: The name of the container within the Pod.
+    - `image`: The container image to use; here, we use the latest `httpd` image.
+    - `ports`: Specifies the ports exposed by the container; in this case, port 80 for HTTP.
+
+You can apply this YAML file with:
+
+```bash
+kubectl apply -f pod.yaml
+```
+
+This will create a Pod with a single container running `httpd`.
+
+# Expose Port
+
 To expose the container's port 80 to your localhost on port 8080, you can use `kubectl port-forward`. This command allows you to forward a local port to a port on the container within the Pod.
 
 Here's how you can do it:
