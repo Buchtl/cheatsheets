@@ -225,3 +225,88 @@ spec:
 2. **Check Ingress**: Run `kubectl get ingress httpd-ingress` to verify the ingress is configured correctly and see the external IP.
 
 This setup should allow you to access your `httpd` app by visiting `http://httpd.local` once the Ingress is set up and the DNS or hosts file is configured.
+
+# OpenShift
+To adapt the previous `httpd` deployment for OpenShift, there are a few key changes required:
+
+1. OpenShift doesn’t allow running containers as the root user by default, so we'll add a `SecurityContext` to ensure the container runs as a non-root user.
+2. OpenShift’s `Route` resource will replace the `Ingress` resource for exposing the application externally.
+
+Here’s the updated configuration:
+
+```yaml
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: httpd-deployment
+  labels:
+    app: httpd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: httpd
+  template:
+    metadata:
+      labels:
+        app: httpd
+    spec:
+      containers:
+        - name: httpd
+          image: httpd:latest
+          ports:
+            - containerPort: 80
+          securityContext:
+            runAsUser: 1001       # Ensures the container runs as non-root
+            allowPrivilegeEscalation: false
+
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpd-service
+spec:
+  selector:
+    app: httpd
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
+
+---
+# Route
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: httpd-route
+spec:
+  to:
+    kind: Service
+    name: httpd-service
+  port:
+    targetPort: 80
+  tls:
+    termination: edge
+  host: httpd-app.example.com  # Replace with your domain or use OpenShift's default subdomain
+```
+
+### Explanation of Changes
+
+- **Deployment**:
+  - Added `securityContext` to ensure that the container runs as a non-root user (`runAsUser: 1001`).
+  - `allowPrivilegeEscalation: false` to adhere to OpenShift’s security constraints.
+
+- **Route**:
+  - Replaces the `Ingress` resource in OpenShift.
+  - Exposes the `httpd-service` to the outside world.
+  - The `host` field specifies the external hostname for the route. OpenShift typically auto-generates a domain if not specified, but you can set it to something like `httpd-app.example.com` if you have a custom domain.
+
+### Accessing the Application
+
+1. **Default Domain**: OpenShift automatically assigns a subdomain if the `host` field is omitted.
+2. **Custom Domain**: If you specify a domain in `host`, make sure it points to your OpenShift cluster’s IP.
+
+This configuration will deploy the `httpd` app with an OpenShift-friendly security context and expose it via a Route.
