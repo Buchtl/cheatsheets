@@ -311,6 +311,119 @@ spec:
 
 This configuration will deploy the `httpd` app with an OpenShift-friendly security context and expose it via a Route.
 
+
+
+# Minikube Ingress
+
+If the NGINX Ingress example isn’t working on Minikube, it’s likely due to a missing or improperly configured NGINX Ingress controller. By default, Minikube does not come with an Ingress controller pre-installed. Let me guide you through the steps to set it up and debug:
+
+---
+
+### **1. Enable and Install the NGINX Ingress Controller in Minikube**
+
+Run the following command to enable the NGINX Ingress controller in Minikube:
+
+```bash
+minikube addons enable ingress
+```
+
+This will deploy the NGINX Ingress controller in your Minikube cluster. You can verify the installation with:
+
+```bash
+kubectl get pods -n kube-system
+```
+
+You should see a Pod named something like `ingress-nginx-controller` running.
+
+---
+
+### **2. Update the Ingress Resource Host**
+
+By default, Minikube uses the IP of the Minikube VM as the host. To test locally, set the `host` in the Ingress resource to match the Minikube IP or use a custom hostname and configure `/etc/hosts`.
+
+1. Get the Minikube IP:
+   ```bash
+   minikube ip
+   ```
+   Example output: `192.168.49.2`
+
+2. Add a mapping to `/etc/hosts` (requires sudo):
+   ```plaintext
+   192.168.49.2 httpd.local
+   ```
+
+Update the Ingress YAML's `host` field to match:
+
+```yaml
+  rules:
+    - host: httpd.local
+```
+
+Reapply the Ingress YAML:
+
+```bash
+kubectl apply -f ingress.yaml
+```
+
+---
+
+### **3. Verify Ingress Setup**
+
+Check the Ingress resource:
+
+```bash
+kubectl get ingress httpd-ingress
+```
+
+Expected output:
+
+```plaintext
+NAME            CLASS    HOSTS         ADDRESS        PORTS   AGE
+httpd-ingress   <none>   httpd.local   192.168.49.2   80      1m
+```
+
+If `ADDRESS` is `<pending>`, wait for a few moments for the NGINX Ingress to finish configuring.
+
+---
+
+### **4. Test the Application**
+
+1. Use `curl` to test access:
+   ```bash
+   curl http://httpd.local
+   ```
+   You should see the default response from the `httpd` server.
+
+2. Open it in a browser:
+   Navigate to `http://httpd.local`.
+
+---
+
+### **5. Debugging Tips**
+
+- **Check Pod Logs**:
+  If it’s not working, check the logs of the NGINX Ingress controller:
+  ```bash
+  kubectl logs -n kube-system deployment/ingress-nginx-controller
+  ```
+
+- **Verify Resources**:
+  Ensure the Service is running and reachable:
+  ```bash
+  kubectl get pods,svc
+  ```
+
+- **Enable Minikube Tunnel (Optional)**:
+  If `ADDRESS` in `kubectl get ingress` doesn’t resolve properly, try starting a Minikube tunnel:
+  ```bash
+  minikube tunnel
+  ```
+
+---
+
+Let me know if this resolves the issue or if additional troubleshooting is needed!
+
+
 # Minikube Ingress Problems
 The issue likely arises because Minikube is attempting to pull images for the NGINX Ingress controller from external container registries (e.g., Docker Hub), which is not possible in your offline environment. To resolve this, you need to ensure that the required images are available locally or within a private registry accessible to your Minikube environment.
 
