@@ -310,3 +310,112 @@ spec:
 2. **Custom Domain**: If you specify a domain in `host`, make sure it points to your OpenShift cluster’s IP.
 
 This configuration will deploy the `httpd` app with an OpenShift-friendly security context and expose it via a Route.
+
+# Minikube Ingress Problems
+The issue likely arises because Minikube is attempting to pull images for the NGINX Ingress controller from external container registries (e.g., Docker Hub), which is not possible in your offline environment. To resolve this, you need to ensure that the required images are available locally or within a private registry accessible to your Minikube environment.
+
+Here’s a step-by-step guide to set up NGINX Ingress in an offline Minikube environment:
+
+---
+
+### **1. Find the Required Images**
+
+Check which images the Minikube Ingress addon uses. The typical images are:
+
+- **Controller**: `k8s.gcr.io/ingress-nginx/controller:<tag>`
+- **Kube-webhook-certgen**: `k8s.gcr.io/ingress-nginx/kube-webhook-certgen:<tag>`
+
+To verify the specific tags, check the documentation or look at the YAML used by Minikube for the ingress addon:
+```bash
+minikube addons list --images | grep ingress
+```
+
+---
+
+### **2. Preload the Images**
+
+If you're offline, you need to preload these images. Follow these steps:
+
+1. **Download the Images Elsewhere**: Use a machine with internet access to pull the required images.
+   ```bash
+   docker pull k8s.gcr.io/ingress-nginx/controller:<tag>
+   docker pull k8s.gcr.io/ingress-nginx/kube-webhook-certgen:<tag>
+   ```
+
+2. **Save the Images**:
+   ```bash
+   docker save -o controller.tar k8s.gcr.io/ingress-nginx/controller:<tag>
+   docker save -o certgen.tar k8s.gcr.io/ingress-nginx/kube-webhook-certgen:<tag>
+   ```
+
+3. **Transfer the Images to the Offline Environment**: Copy the `.tar` files to the machine running Minikube.
+
+4. **Load the Images into Minikube**:
+   ```bash
+   minikube image load controller.tar
+   minikube image load certgen.tar
+   ```
+
+---
+
+### **3. Enable the Ingress Addon**
+
+Now that the required images are preloaded, enable the addon:
+```bash
+minikube addons enable ingress
+```
+
+Minikube should now create the Ingress controller Pods without needing to pull images from external sources. Verify the Pods:
+```bash
+kubectl get pods -n kube-system
+```
+
+---
+
+### **4. (Optional) Deploy Ingress Manually**
+
+If the `minikube addons enable ingress` method still doesn't work, you can deploy the NGINX Ingress controller manually:
+
+1. **Download the Ingress YAML**:
+   - Download the official Ingress controller YAML from a machine with internet access:
+     ```bash
+     curl -o nginx-ingress.yaml https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/baremetal/deploy.yaml
+     ```
+   - Transfer this file to your offline environment.
+
+2. **Edit the YAML to Use Local Images**:
+   - Replace the image names with the local image references in the `nginx-ingress.yaml` file.
+     Example:
+     ```yaml
+     image: k8s.gcr.io/ingress-nginx/controller:<tag>
+     ```
+     becomes:
+     ```yaml
+     image: localhost/k8s.gcr.io/ingress-nginx/controller:<tag>
+     ```
+
+3. **Apply the YAML**:
+   ```bash
+   kubectl apply -f nginx-ingress.yaml
+   ```
+
+---
+
+### **5. Verify the Setup**
+
+Check the status of the Ingress controller Pods:
+```bash
+kubectl get pods -n ingress-nginx
+```
+
+Once they are running, test the ingress configuration as described earlier.
+
+---
+
+### **Key Notes for Offline Setup**
+
+- Always preload images for any additional components you plan to use.
+- Consider setting up a private registry to simplify image management in your offline environment.
+- Minikube’s `--cache-images` flag can help cache required images locally when setting up Minikube in a connected environment.
+
+Let me know if you need further assistance!
