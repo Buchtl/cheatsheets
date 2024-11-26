@@ -600,3 +600,59 @@ If you need to log out from the IdP, the OAuth2 Proxy's `/oauth2/sign_out` endpo
 - **Session Duration**: Ensure the OAuth2 Proxy session cookie expiration aligns with your app's logout behavior.
 - **Token Revocation**: If access or refresh tokens are issued and need to be revoked, ensure the IdP supports this and configure it in your app or proxy.
 - **Frontend Cleanup**: After logout, ensure your React app clears any user-related data in the local state, context, or localStorage.
+
+
+# Logout Improvement
+To achieve a clean logout without exposing the OIDC provider details to the React app, you need to rely entirely on **OAuth2 Proxy** for handling the logout process. The steps below ensure that the React app doesn't need to know the OIDC provider's logout URL or handle tokens directly.
+
+---
+
+### Steps for Clean Logout:
+
+1. **Use the OAuth2 Proxy's `/oauth2/sign_out` Endpoint**:
+   The OAuth2 Proxy already abstracts the OIDC provider details. When you redirect the user to `/oauth2/sign_out`, it can handle both:
+   - Invalidating the session stored in its secure cookies.
+   - Optionally redirecting to the OIDC provider's logout endpoint to terminate the user's session there.
+
+2. **Configure OAuth2 Proxy for Provider Logout**:
+   In your **OAuth2 Proxy** configuration, set up the provider logout flow. This ensures the proxy handles redirecting users to the OIDC provider's logout endpoint without the React app knowing about it.
+
+   Key configuration options:
+   - **`--oidc-issuer-url`**: This ensures the proxy knows the OIDC provider.
+   - **`--after-sign-out-url`**: Specifies where the user should be redirected after logging out (e.g., your app's homepage).
+   - **`--oidc-extra-logout-url-parameters`** (if supported): Adds additional parameters for the OIDC provider logout endpoint, such as post-logout redirection.
+
+3. **Redirect the User to `/oauth2/sign_out` in React**:
+   In your React app, the logout function can simply redirect the user to `/oauth2/sign_out`:
+
+   ```javascript
+   const logout = () => {
+     window.location.href = '/oauth2/sign_out';
+   };
+   ```
+
+4. **Ensure Post-Logout Redirection**:
+   Configure the OAuth2 Proxy to send users back to a specific page after logout:
+   - Use the `--after-sign-out-url` option to set a redirection URL (e.g., your app’s homepage).
+   - Example configuration:
+     ```yaml
+     --after-sign-out-url=https://your-app.com/
+     ```
+
+5. **Frontend State Cleanup**:
+   After the user is logged out and redirected back to your React app, ensure that all user-related state is cleared (e.g., context, Redux store, or local storage). You can implement this cleanup in your app's landing page or a `useEffect` hook.
+
+   ```javascript
+   useEffect(() => {
+     // Clear any user-related data
+     localStorage.clear();
+     sessionStorage.clear();
+   }, []);
+   ```
+
+---
+
+### Benefits of This Approach:
+- **Abstracts the OIDC Provider**: The React app only interacts with OAuth2 Proxy and doesn't know anything about the underlying OIDC provider.
+- **Centralized Logout Logic**: The OAuth2 Proxy handles the entire logout flow, including redirecting to the OIDC provider's logout endpoint (if configured).
+- **Simplified React App Logic**: The app only needs to redirect to `/oauth2/sign_out` and handle state cleanup.
