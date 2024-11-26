@@ -461,3 +461,84 @@ The **access token** and **ID token** are both JSON Web Tokens (JWTs) commonly u
 Think of a **concert:**
 - The **access token** is your ticket that grants entry to different areas (e.g., backstage, VIP). It's given to the event staff (API) to validate your permissions.
 - The **ID token** is like your ID card that proves who you are to the ticket issuer (client application). It’s used at check-in but not shown to event staff. 
+
+# Decode Token
+
+Here is a shell script that decodes a JWT access token. The script assumes the token is passed as an argument and requires `jq` for JSON formatting.
+
+```bash
+#!/bin/bash
+
+# Check for required utilities
+if ! command -v jq &> /dev/null; then
+    echo "Error: jq is not installed. Please install jq to use this script."
+    exit 1
+fi
+
+# Check if token is provided
+if [ -z "$1" ]; then
+    echo "Usage: $0 <jwt-access-token>"
+    exit 1
+fi
+
+JWT_TOKEN=$1
+
+# Split the JWT token into its components
+IFS='.' read -r HEADER PAYLOAD SIGNATURE <<< "$JWT_TOKEN"
+
+# Decode Base64 (with URL-safe encoding) and parse JSON
+decode_base64url() {
+    local encoded=$1
+    # Convert Base64 URL format to standard Base64
+    local decoded=$(echo "$encoded" | tr '_-' '/+' | base64 -d 2>/dev/null)
+    if [ $? -ne 0 ]; then
+        echo "Error: Invalid JWT token"
+        exit 1
+    fi
+    echo "$decoded"
+}
+
+# Decode header
+HEADER_JSON=$(decode_base64url "$HEADER" | jq .)
+echo "===== HEADER ====="
+echo "$HEADER_JSON"
+
+# Decode payload
+PAYLOAD_JSON=$(decode_base64url "$PAYLOAD" | jq .)
+echo "===== PAYLOAD ====="
+echo "$PAYLOAD_JSON"
+
+# Signature can't be decoded directly as it is hashed
+echo "===== SIGNATURE ====="
+echo "$SIGNATURE"
+```
+
+### How to Use the Script
+1. Save the script to a file, e.g., `decode_jwt.sh`.
+2. Make it executable:
+   ```bash
+   chmod +x decode_jwt.sh
+   ```
+3. Run the script with your JWT token as an argument:
+   ```bash
+   ./decode_jwt.sh <your-jwt-token>
+   ```
+
+### Example Output
+```plaintext
+===== HEADER =====
+{
+  "alg": "HS256",
+  "typ": "JWT"
+}
+===== PAYLOAD =====
+{
+  "sub": "1234567890",
+  "name": "John Doe",
+  "iat": 1516239022
+}
+===== SIGNATURE =====
+abc123signaturepart
+```
+
+**Note:** The script does not verify the JWT signature; it only decodes the token for inspection. Signature verification requires the secret or public key used to sign the token.
