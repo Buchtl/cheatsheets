@@ -542,3 +542,61 @@ abc123signaturepart
 ```
 
 **Note:** The script does not verify the JWT signature; it only decodes the token for inspection. Signature verification requires the secret or public key used to sign the token.
+
+# Logout
+
+Logging out of a React app that uses **OAuth2 Proxy** involves clearing the user's session in the proxy and potentially in the identity provider (IdP) as well. The process usually looks like this:
+
+---
+
+### Steps to Logout:
+
+1. **Clear the OAuth2 Proxy Cookie/Session**:
+   - When using OAuth2 Proxy, the user’s session is stored in a secure cookie (e.g., `oauth2_proxy` or a custom-named session cookie).
+   - To log the user out, the session needs to be invalidated. This is typically done by redirecting the user to the OAuth2 Proxy's `/oauth2/sign_out` endpoint.
+
+2. **Redirect to the Identity Provider (IdP) Logout URL**:
+   - Some configurations require redirecting the user to the IdP's logout endpoint to terminate their session at the IdP level.
+   - If this step is skipped, the user might still appear logged in at the IdP, and a new session could be initiated immediately upon accessing the app.
+
+3. **Clear Application State**:
+   - Remove any local state or cached information in your React app that pertains to the user, such as tokens stored in memory or local storage.
+
+---
+
+### Implementation in React App:
+
+#### Step 1: Configure the OAuth2 Proxy Logout URL
+Add a logout route in your OAuth2 Proxy configuration. This is usually `/oauth2/sign_out`.
+
+You can also add `--after-sign-out-url=<url>` to specify where the user should be redirected after logout.
+
+#### Step 2: Create a Logout Handler in React
+Here’s a basic example of a logout function:
+
+```javascript
+const logout = () => {
+  // Redirect to the OAuth2 Proxy logout endpoint
+  window.location.href = '/oauth2/sign_out';
+};
+```
+
+#### Step 3: Handle Optional IdP Logout
+If you need to log out from the IdP, the OAuth2 Proxy's `/oauth2/sign_out` endpoint can redirect users to the IdP logout endpoint:
+
+- Add the `--oidc-extra-logout-url-parameters` or similar flags (depending on your OAuth2 Proxy version) to include the IdP logout URL.
+- Alternatively, manually append the IdP's logout URL as a query parameter in your React app:
+  ```javascript
+  const logout = () => {
+    const idpLogoutUrl = 'https://idp.example.com/logout';
+    const appRedirectUrl = encodeURIComponent(window.location.origin); // Redirect back to your app
+    window.location.href = `/oauth2/sign_out?rd=${idpLogoutUrl}?returnTo=${appRedirectUrl}`;
+  };
+  ```
+
+---
+
+### Additional Notes:
+- **Session Duration**: Ensure the OAuth2 Proxy session cookie expiration aligns with your app's logout behavior.
+- **Token Revocation**: If access or refresh tokens are issued and need to be revoked, ensure the IdP supports this and configure it in your app or proxy.
+- **Frontend Cleanup**: After logout, ensure your React app clears any user-related data in the local state, context, or localStorage.
