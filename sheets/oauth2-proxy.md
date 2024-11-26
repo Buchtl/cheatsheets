@@ -300,3 +300,87 @@ If you are getting a `302` (temporary redirect) response instead of a `301` (per
     ```
 
 These adjustments should ensure that Apache sends a `301` redirect instead of a `302` when redirecting from HTTP to HTTPS.
+
+# Access Token
+
+To configure an OAuth2 Proxy Docker container (using Swarm or Compose) to include the OIDC access token in the headers, you need to:
+
+1. **Ensure that `--pass-access-token` is enabled in the OAuth2 Proxy configuration.**
+   This flag will instruct the proxy to include the OIDC `access_token` as a header in the forwarded request.
+
+2. **Set up `--pass-authorization-header` if needed.**
+   If you want to include the token as a Bearer token in the `Authorization` header, this should also be enabled.
+
+3. **Define custom headers for the token if necessary.**
+   You can configure OAuth2 Proxy to add the access token to a specific header using `--set-authorization-header` or by defining custom header mappings.
+
+### Example Docker Compose Configuration
+Here’s an example of how to configure this in a `docker-compose.yml` file:
+
+```yaml
+version: "3.7"
+services:
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.4.0
+    ports:
+      - "4180:4180"
+    environment:
+      OAUTH2_PROXY_PROVIDER: "oidc"
+      OAUTH2_PROXY_OIDC_ISSUER_URL: "https://your-issuer-url.com"
+      OAUTH2_PROXY_CLIENT_ID: "your-client-id"
+      OAUTH2_PROXY_CLIENT_SECRET: "your-client-secret"
+      OAUTH2_PROXY_COOKIE_SECRET: "your-cookie-secret"
+    command:
+      - --http-address=0.0.0.0:4180
+      - --upstream=http://example-app:8080
+      - --redirect-url=https://your-redirect-url.com/oauth2/callback
+      - --pass-access-token=true
+      - --set-authorization-header=true
+      - --pass-authorization-header=true
+      - --email-domain=*
+```
+
+### Key Configuration Flags
+- **`--pass-access-token=true`**
+  Ensures that the `access_token` is passed in the headers.
+
+- **`--set-authorization-header=true`**
+  Sets the `Authorization` header with the `access_token` as a Bearer token.
+
+- **`--pass-authorization-header=true`**
+  Ensures the `Authorization` header is forwarded as is.
+
+- **Custom Header Mapping (Optional):**
+  If you want to map the access token to a custom header, use a proxy or a middleware upstream of the OAuth2 Proxy.
+
+### With Docker Swarm
+In Docker Swarm, you can use a `deploy` block to ensure proper scaling and resource allocation. For example:
+
+```yaml
+services:
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.4.0
+    ports:
+      - "4180:4180"
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "512M"
+      restart_policy:
+        condition: on-failure
+    environment:
+      # Same as in the Compose example
+    command:
+      # Same as in the Compose example
+```
+
+### Verify Configuration
+After configuring, test the headers with a debugging tool like `curl` or Postman to confirm that the `access_token` is included in the headers. For example:
+
+```bash
+curl -v -H "Authorization: Bearer <token>" http://localhost:4180
+```
+
+If you don't see the `access_token` being forwarded correctly, double-check your issuer configuration and OAuth2 Proxy logs for issues.
