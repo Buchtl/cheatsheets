@@ -384,3 +384,80 @@ curl -v -H "Authorization: Bearer <token>" http://localhost:4180
 ```
 
 If you don't see the `access_token` being forwarded correctly, double-check your issuer configuration and OAuth2 Proxy logs for issues.
+
+# Difference Between Acess Token and ID Token
+The **access token** and **ID token** are both JSON Web Tokens (JWTs) commonly used in OAuth 2.0 and OpenID Connect (OIDC), but they serve different purposes:
+
+---
+
+### **1. Access Token**
+**Purpose**: Grants access to APIs and resources.
+- **What it contains**:
+  - Information required by the resource server (e.g., API) to authorize requests.
+  - Often includes user permissions (scopes), expiration time, and information about the client or user.
+  - It **does not contain detailed user profile information.**
+  - Example claims:
+    ```json
+    {
+      "iss": "https://auth.example.com",
+      "sub": "1234567890",
+      "aud": "api.example.com",
+      "exp": 1698771200,
+      "scope": "read write"
+    }
+    ```
+
+- **Use case**:
+  - Sent in the `Authorization` header as a Bearer token:
+    ```http
+    Authorization: Bearer <access_token>
+    ```
+  - Allows the client to act on behalf of a user when calling APIs.
+
+- **Audience**: Resource server (e.g., an API).
+
+---
+
+### **2. ID Token**
+**Purpose**: Confirms the user's identity to the client application.
+- **What it contains**:
+  - Information about the authenticated user.
+  - Typically includes the user's profile details, such as name, email, and other claims (depending on what the identity provider returns).
+  - Example claims:
+    ```json
+    {
+      "iss": "https://auth.example.com",
+      "sub": "1234567890",
+      "aud": "your-client-id",
+      "exp": 1698771200,
+      "email": "user@example.com",
+      "name": "John Doe",
+      "iat": 1698767600
+    }
+    ```
+
+- **Use case**:
+  - Used by the client application to verify that the user has been authenticated by the identity provider.
+  - Typically returned during the OpenID Connect login flow.
+  - It is **not sent to APIs**; it's used only by the client.
+
+- **Audience**: The client application (e.g., a web or mobile app).
+
+---
+
+### **Key Differences**
+| Feature           | Access Token                          | ID Token                             |
+|--------------------|---------------------------------------|---------------------------------------|
+| **Purpose**        | Authorizes access to APIs            | Confirms user's identity             |
+| **Audience**       | Resource server (API)                | Client application                   |
+| **Includes User Info?** | No, typically contains scopes and permissions | Yes, user profile info (e.g., name, email) |
+| **Use Case**       | Sent in API requests                 | Verifies authentication              |
+| **Expires?**       | Yes                                  | Yes                                  |
+| **Part of OAuth2?**| Yes                                  | No, specific to OIDC                 |
+
+---
+
+### **Analogy**
+Think of a **concert:**
+- The **access token** is your ticket that grants entry to different areas (e.g., backstage, VIP). It's given to the event staff (API) to validate your permissions.
+- The **ID token** is like your ID card that proves who you are to the ticket issuer (client application). It’s used at check-in but not shown to event staff. 
