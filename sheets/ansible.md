@@ -183,3 +183,98 @@ ansible -i inventory target_group -m ping
 ```
 
 If configured correctly, Ansible should connect to the target hosts without prompting for a password.
+
+# Init SSH
+When connecting to a new server for the first time using SSH, the server's host key is not recognized by your local machine. This can cause Ansible or SSH commands to fail with a message like:
+
+```
+The authenticity of host 'host.example.com (1.2.3.4)' can't be established.
+```
+
+To fix this issue, you can handle the host key verification in one of the following ways:
+
+---
+
+### **1. Add the Host Key to Known Hosts**
+Run an SSH command manually to add the server's host key to your `~/.ssh/known_hosts` file:
+
+```bash
+ssh user@target_host
+```
+
+Type `yes` when prompted to accept the server's host key. Once accepted, you can run Ansible without issues.
+
+---
+
+### **2. Disable Host Key Checking (Temporary Solution)**
+You can disable host key checking in your Ansible commands or configuration, though this is less secure.
+
+#### A. Command Line
+Add the `-e ansible_ssh_extra_args` option:
+
+```bash
+ansible -i inventory target_group -m ping -e "ansible_ssh_extra_args='-o StrictHostKeyChecking=no'"
+```
+
+#### B. ansible.cfg
+Modify your `ansible.cfg` file to include:
+
+```ini
+[defaults]
+host_key_checking = False
+```
+
+#### C. Environment Variable
+Set the environment variable to disable host key checking:
+
+```bash
+export ANSIBLE_HOST_KEY_CHECKING=False
+ansible -i inventory target_group -m ping
+```
+
+---
+
+### **3. Automatically Accept Host Keys (Secure & Automated)**
+Use the `ssh-keyscan` command to gather host keys for the new server and append them to your `~/.ssh/known_hosts` file.
+
+```bash
+ssh-keyscan -H target_host >> ~/.ssh/known_hosts
+```
+
+To automate this for multiple hosts in your inventory:
+
+```bash
+for host in $(awk '/^[^#]/ {print $1}' inventory); do ssh-keyscan -H $host >> ~/.ssh/known_hosts; done
+```
+
+This securely adds the host keys without disabling host key checking.
+
+---
+
+### **4. Use `add_host` Module in Ansible**
+If you need to accept keys dynamically during playbook execution, you can use the `add_host` module in a task:
+
+```yaml
+- name: Add host keys to known_hosts
+  hosts: localhost
+  tasks:
+    - name: Scan and add host key
+      command: ssh-keyscan -H {{ inventory_hostname }} >> ~/.ssh/known_hosts
+```
+
+---
+
+### **5. Combine with Ansible Automation**
+You can pre-configure SSH keys and known hosts using Ansible itself:
+
+```yaml
+- hosts: localhost
+  tasks:
+    - name: Add server to known_hosts
+      shell: ssh-keyscan -H {{ inventory_hostname }} >> ~/.ssh/known_hosts
+      delegate_to: localhost
+```
+
+After this task runs, the new server's host key will be trusted, and subsequent SSH connections will work.
+
+By handling the host key as shown above, you can avoid errors while maintaining security.
