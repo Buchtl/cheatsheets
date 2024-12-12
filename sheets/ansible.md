@@ -109,3 +109,77 @@ Run the role on only one host and delegate its execution to the primary server.
 - For production, ensure all logical servers are treated independently to reflect the real-world setup.
 
 Would you like a deeper dive into any of these methods?
+
+# SSH Keys
+To run Ansible using SSH keys instead of an SSH login with a password, follow these steps:
+
+### 1. **Generate SSH Key Pair**
+If you don’t already have an SSH key pair, generate one:
+
+```bash
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+```
+
+Save the key pair in the default location (`~/.ssh/id_rsa`).
+
+### 2. **Copy the Public Key to the Target Hosts**
+Transfer your public key (`~/.ssh/id_rsa.pub`) to the target hosts:
+
+```bash
+ssh-copy-id -i ~/.ssh/id_rsa user@target_host
+```
+
+Replace `user` with the username and `target_host` with the hostname or IP address of your target machine.
+
+Alternatively, you can manually append the public key to the `~/.ssh/authorized_keys` file on the target host.
+
+### 3. **Configure Ansible Inventory**
+Ensure your Ansible inventory file (`inventory` or `hosts`) lists the target hosts. For example:
+
+```ini
+[target_group]
+target_host ansible_user=user
+```
+
+Replace `target_host` with the hostname or IP of the target machine and `user` with the SSH username.
+
+### 4. **Specify the Private Key in Ansible**
+You can specify the private key in multiple ways:
+
+#### Option A: **Command Line**
+Pass the private key using the `--private-key` option:
+
+```bash
+ansible -i inventory target_group -m ping --private-key ~/.ssh/id_rsa
+```
+
+#### Option B: **ansible.cfg**
+Edit your `ansible.cfg` file to include the path to the private key:
+
+```ini
+[defaults]
+inventory = inventory
+remote_user = user
+private_key_file = ~/.ssh/id_rsa
+```
+
+#### Option C: **Playbook-Specific Configuration**
+In your playbook YAML file, use the `ansible_ssh_private_key_file` variable:
+
+```yaml
+- hosts: target_group
+  vars:
+    ansible_ssh_private_key_file: ~/.ssh/id_rsa
+  tasks:
+    - name: Ping the target
+      ping:
+```
+
+### 5. **Test the Configuration**
+Verify the setup by pinging the target hosts:
+
+```bash
+ansible -i inventory target_group -m ping
+```
+
+If configured correctly, Ansible should connect to the target hosts without prompting for a password.
