@@ -160,3 +160,166 @@ export default MyApp;
 - Use this customized Apollo Client in your React application to make authenticated GraphQL requests.
 
 This approach ensures that your GraphQL queries include the OIDC access token for authorization, allowing your server to verify the user's identity and permissions.
+
+# Oauth2 and Apollo Sesseion Timeout
+
+You're experiencing a session timeout issue where Apollo doesn't correctly handle the expired authentication state. Since your React app accesses the API through an OAuth2 proxy and the API itself is secured by Keycloak (OIDC), when the session expires, the proxy likely returns a **401 Unauthorized** or a **302 Redirect** response instead of the expected API response, which Apollo interprets as a **network error**.
+
+### ✅ **Steps to Fix the Issue**
+
+1. **Handle Authentication Errors in Apollo**
+   - Use an Apollo Link to intercept errors and refresh the session or redirect to login when necessary.
+
+2. **Detect Session Expiration and Refresh Tokens**
+   - Since you are using OAuth2-proxy, token refresh is typically handled by the proxy. Ensure that it properly refreshes the session using a refresh token.
+   - If refresh is not working, you might need to handle it manually by redirecting to the login page.
+
+---
+
+## **Solution: Implement an Apollo Link Error Handler**
+Modify your Apollo client configuration to handle `401` responses properly.
+
+### **1️⃣ Use `apollo-link-error` to Detect Unauthorized Errors**
+Modify your Apollo client setup:
+
+```javascript
+import { ApolloClient, InMemoryCache, HttpLink } from "@apollo/client";
+import { onError } from "@apollo/client/link/error";
+import { setContext } from "@apollo/client/link/context";
+
+// API Endpoint (proxied through OAuth2-proxy)
+const API_URL = "/graphql"; // Adjust based on your setup
+
+// Handle authentication errors
+const errorLink = onError(({ graphQLErrors, networkError, response }) => {
+  if (networkError) {
+    console.error("Apollo Network Error:", networkError);
+
+    if (networkError.statusCode === 401) {
+      console.warn("Session expired. Redirecting to login...");
+      window.location.href = "/oauth2/sign_in"; // Adjust as needed
+    }
+  }
+});
+
+// Apollo HTTP Link (calls the GraphQL API)
+const httpLink = new HttpLink({ uri: API_URL, credentials: "include" });
+
+// Apollo Client
+const client = new ApolloClient({
+  link: errorLink.concat(httpLink),
+  cache: new InMemoryCache(),
+});
+
+export default client;
+```
+
+---
+
+### **2️⃣ Ensure OAuth2 Proxy Handles Token Refresh**
+If your OAuth2 proxy doesn't refresh tokens automatically, you might need to configure `cookie_refresh` and `cookie_expire`.
+
+**Example OAuth2 Proxy Config:**
+```yaml
+cookie_refresh: "5m"  # Refresh session every 5 minutes
+cookie_expire: "1h"    # Session expires after 1 hour
+```
+
+---
+
+### **3️⃣ Alternative: Use Silent Authentication (If Supported)**
+If your OAuth2 setup allows refreshing sessions silently, you could try triggering an API call to refresh the session before it expires.
+
+---
+
+## **Expected Behavior After Fix**
+- If the session expires, Apollo intercepts the `401` error and redirects to login.
+- If OAuth2-proxy refreshes tokens correctly, the session will be maintained.
+
+---
+
+Try this setup and let me know if you need adjustments! 🚀
+
+# Setup with access token 2m
+Yes, you **can** set the **Access Token Lifespan** to **2 minutes** while keeping the **SSO session** and **Refresh Token lifespan** at **8 hours** in Keycloak.  
+
+However, doing this means that your **Access Token** (used in API requests) will expire **every 2 minutes**, requiring frequent token refreshes. This is fine **if OAuth2 Proxy handles refresh tokens properly**.  
+
+---
+
+## **🔧 Steps to Set This Up in Keycloak**
+1. **Log in to Keycloak Admin Console**  
+   - Navigate to `http://<your-keycloak-domain>/admin/`
+  
+2. **Go to Realm Settings → Tokens Tab**  
+   - **SSO Session Idle Timeout** → `28800` (8 hours)  
+   - **SSO Session Max Lifespan** → `28800` (8 hours)  
+   - **Refresh Token Max Lifespan** → `28800` (8 hours)  
+   - **Access Token Lifespan** → `120` (2 minutes)  
+
+3. **Save Changes** ✅  
+
+---
+
+## **🔄 Handling Frequent Token Expiration**
+Since the **Access Token expires every 2 minutes**, OAuth2 Proxy must automatically refresh it.  
+
+### **1️⃣ Ensure OAuth2 Proxy Refreshes Tokens**
+Modify `oauth2-proxy.yaml` to allow refresh before token expiration:  
+```yaml
+cookie_refresh: "1m30s"  # Refresh the session every 1 minute 30 seconds
+cookie_expire: "8h"      # Keep session alive for 8 hours
+```
+
+---
+
+### **2️⃣ Update Apollo Client to Handle Expired Tokens**
+Since the Access Token expires every 2 minutes, API requests will start failing with `401 Unauthorized`. You need **Apollo Link** to detect token expiration and force OAuth2 Proxy to refresh it.
+
+#### **Modify `apolloClient.js`**
+```javascript
+import { ApolloClient, InMemoryCache, HttpLink } from "@apollo/client";
+import { onError } from "@apollo/client/link/error";
+
+// API Endpoint
+const API_URL = "/graphql";
+
+// Handle Authentication Errors
+const errorLink = onError(({ networkError }) => {
+  if (networkError && networkError.statusCode === 401) {
+    console.warn("Access token expired. Redirecting to refresh...");
+    window.location.href = "/oauth2/sign_in"; // OAuth2 Proxy refresh
+  }
+});
+
+// Apollo HTTP Link
+const httpLink = new HttpLink({
+  uri: API_URL,
+  credentials: "include", // Send cookies with requests
+});
+
+// Apollo Client
+const client = new ApolloClient({
+  link: errorLink.concat(httpLink),
+  cache: new InMemoryCache(),
+});
+
+export default client;
+```
+✅ This ensures that expired tokens **trigger a silent refresh**.
+
+---
+
+## **✅ Final Behavior**
+- 🔹 **Access Token expires every 2 minutes**.
+- 🔹 OAuth2 Proxy automatically **refreshes** the session **before expiration**.
+- 🔹 Apollo Client **detects expired tokens** and triggers a refresh.
+- 🔹 The **session remains active for 8 hours** unless the user logs out.
+
+---
+
+### **⚠️ Potential Issues**
+- If OAuth2 Proxy **does not refresh the session correctly**, users may get logged out every 2 minutes.
+- If your API requires **manual token renewal**, consider setting the **Access Token Lifespan** to a slightly higher value (e.g., **5–10 minutes**).
+
+Would you like me to help debug token refresh behavior? 🚀
