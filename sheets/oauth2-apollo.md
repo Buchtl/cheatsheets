@@ -323,3 +323,73 @@ export default client;
 - If your API requires **manual token renewal**, consider setting the **Access Token Lifespan** to a slightly higher value (e.g., **5–10 minutes**).
 
 Would you like me to help debug token refresh behavior? 🚀
+
+Great question! The **Client settings** in Keycloak **do have a purpose**, but they **only apply in specific scenarios**. Here's a breakdown of when and how **Client settings** work, and why they often seem overridden by **Realm settings**.
+
+---
+
+## **🔍 How Do Client Settings Work?**
+By default, **Realm settings take precedence** over Client settings **unless explicitly overridden**.
+
+However, **Client session settings** allow you to:
+1. **Override Realm defaults for specific clients** (if enabled).
+2. **Enforce stricter timeouts** for some clients while keeping others at realm defaults.
+3. **Ensure different apps have different session lifespans** while still sharing the same Keycloak instance.
+
+---
+
+## **🔧 When Do Client Settings Apply?**
+Client settings **only take effect if**:
+1. **The realm allows overriding defaults**
+   - Some versions of Keycloak have an **"Override Realm Defaults"** toggle in **Client settings**.
+   - If this is not enabled, the **Realm settings always win**.
+
+2. **The client uses its own session settings**
+   - If the client is configured **to allow a shorter or longer session**, it will override the Realm.
+   - Example: You want **your React app's session to last 8 hours**, but another client (e.g., mobile app) should **expire after 1 hour**.
+
+---
+
+## **🔧 How to Make Client Settings Work**
+If you want your **Client settings to actually take effect**, do the following:
+
+### **1️⃣ Enable Client-Specific Session Settings**
+1. **Log in to Keycloak Admin Console** → `http://<your-keycloak-domain>/admin/`
+2. **Go to** `Clients` → Select your client (e.g., `oauth2-proxy` or your React App client)
+3. **Go to the "Advanced Settings" (or "Sessions" tab, depending on Keycloak version)**
+4. **Check for an option to override Realm defaults**:
+   - **If available:** Toggle **ON** (e.g., `Override Realm Defaults: Yes`)
+   - **If not available:** The realm settings will always apply.
+5. **Set session values for your client:**
+   - **Client Session Idle Timeout** → `28800` (8 hours)
+   - **Client Session Max Lifespan** → `28800` (8 hours)
+   - **Access Token Lifespan** → `120` (2 minutes)
+6. **Save Changes** ✅
+
+### **2️⃣ Restart Keycloak (If Necessary)**
+Some Keycloak versions require a restart for session settings to take effect:
+```bash
+docker restart keycloak
+# or if running Keycloak standalone
+systemctl restart keycloak
+```
+
+---
+
+## **🔎 When Should You Use Realm vs. Client Settings?**
+| **Scenario** | **Use Realm Settings?** | **Use Client Settings?** |
+|-------------|----------------|----------------|
+| **All clients should have the same session timeout** | ✅ Yes | ❌ No |
+| **Different apps need different session lifespans** (e.g., 8h for Web, 1h for Mobile) | ❌ No | ✅ Yes |
+| **You want Keycloak to handle all session policies centrally** | ✅ Yes | ❌ No |
+| **A specific client should have longer/shorter sessions than the default** | ❌ No | ✅ Yes (but ensure override is enabled) |
+
+---
+
+## **✅ Summary**
+- **Realm settings** are **global** and apply by default.
+- **Client settings** only work if **Keycloak allows overriding** realm defaults.
+- If your session expires after **30 minutes** despite setting **8 hours in the client**, it's because the **Realm setting still enforces 30 minutes**.
+- To fix it, either **update the Realm settings** or **enable client-specific session overrides**.
+
+Would you like help debugging whether your client settings are actually being applied? 🚀
