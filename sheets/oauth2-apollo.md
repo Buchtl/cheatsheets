@@ -28,7 +28,7 @@ const httpLink = createHttpLink({
 const authLink = setContext((_, { headers }) => {
   // Get the authentication token from cookies or local storage
   const token = localStorage.getItem('auth_token');
-  
+
   // Return the headers with the token if it exists
   return {
     headers: {
@@ -241,31 +241,31 @@ If your OAuth2 setup allows refreshing sessions silently, you could try triggeri
 Try this setup and let me know if you need adjustments! 🚀
 
 # Setup with access token 2m
-Yes, you **can** set the **Access Token Lifespan** to **2 minutes** while keeping the **SSO session** and **Refresh Token lifespan** at **8 hours** in Keycloak.  
+Yes, you **can** set the **Access Token Lifespan** to **2 minutes** while keeping the **SSO session** and **Refresh Token lifespan** at **8 hours** in Keycloak.
 
-However, doing this means that your **Access Token** (used in API requests) will expire **every 2 minutes**, requiring frequent token refreshes. This is fine **if OAuth2 Proxy handles refresh tokens properly**.  
+However, doing this means that your **Access Token** (used in API requests) will expire **every 2 minutes**, requiring frequent token refreshes. This is fine **if OAuth2 Proxy handles refresh tokens properly**.
 
 ---
 
 ## **🔧 Steps to Set This Up in Keycloak**
-1. **Log in to Keycloak Admin Console**  
+1. **Log in to Keycloak Admin Console**
    - Navigate to `http://<your-keycloak-domain>/admin/`
-  
-2. **Go to Realm Settings → Tokens Tab**  
-   - **SSO Session Idle Timeout** → `28800` (8 hours)  
-   - **SSO Session Max Lifespan** → `28800` (8 hours)  
-   - **Refresh Token Max Lifespan** → `28800` (8 hours)  
-   - **Access Token Lifespan** → `120` (2 minutes)  
 
-3. **Save Changes** ✅  
+2. **Go to Realm Settings → Tokens Tab**
+   - **SSO Session Idle Timeout** → `28800` (8 hours)
+   - **SSO Session Max Lifespan** → `28800` (8 hours)
+   - **Refresh Token Max Lifespan** → `28800` (8 hours)
+   - **Access Token Lifespan** → `120` (2 minutes)
+
+3. **Save Changes** ✅
 
 ---
 
 ## **🔄 Handling Frequent Token Expiration**
-Since the **Access Token expires every 2 minutes**, OAuth2 Proxy must automatically refresh it.  
+Since the **Access Token expires every 2 minutes**, OAuth2 Proxy must automatically refresh it.
 
 ### **1️⃣ Ensure OAuth2 Proxy Refreshes Tokens**
-Modify `oauth2-proxy.yaml` to allow refresh before token expiration:  
+Modify `oauth2-proxy.yaml` to allow refresh before token expiration:
 ```yaml
 cookie_refresh: "1m30s"  # Refresh the session every 1 minute 30 seconds
 cookie_expire: "8h"      # Keep session alive for 8 hours
@@ -393,3 +393,76 @@ systemctl restart keycloak
 - To fix it, either **update the Realm settings** or **enable client-specific session overrides**.
 
 Would you like help debugging whether your client settings are actually being applied? 🚀
+
+To log out a Keycloak/OIDC session via `oauth2-proxy` in a React (Vite) app, you need to ensure that:
+
+1. **OAuth2 Proxy is configured** to handle logout requests properly.
+2. **Your React app** correctly initiates the logout process by redirecting the user to the appropriate logout endpoint.
+
+---
+
+## **1. OAuth2 Proxy Logout Configuration**
+OAuth2 Proxy supports logout via the `/oauth2/sign_out` endpoint. However, to fully log out from Keycloak, you need to configure it properly.
+
+### **Key OAuth2 Proxy Configurations** (Example)
+```ini
+provider=oidc
+oidc_issuer_url=https://keycloak.example.com/realms/myrealm
+client_id=my-client-id
+client_secret=my-client-secret
+cookie_secret=your-random-secret
+cookie_secure=true
+cookie_domains=.example.com
+set_xauthrequest=true
+```
+Ensure `set_xauthrequest=true` is enabled so that the authentication session is properly handled.
+
+### **Modify Logout URL Handling** (Optional)
+If Keycloak doesn't automatically log the user out, you may need to specify a `post_logout_redirect_uri`. OAuth2 Proxy does not provide this option directly, so you may need to manually configure Keycloak’s logout URL.
+
+---
+
+## **2. React (Vite) App - Logout Implementation**
+### **Logout Flow**
+1. Call `/oauth2/sign_out` to clear OAuth2 Proxy session.
+2. Redirect the user to Keycloak's logout endpoint to clear their OIDC session.
+3. Redirect the user back to the app after logout.
+
+### **Example Logout Function**
+```tsx
+const logout = () => {
+  const oauthProxyLogoutUrl = "/oauth2/sign_out";
+  const keycloakLogoutUrl = `https://keycloak.example.com/realms/myrealm/protocol/openid-connect/logout?redirect_uri=${encodeURIComponent(window.location.origin)}`;
+
+  // Step 1: Logout from OAuth2 Proxy
+  fetch(oauthProxyLogoutUrl, { credentials: "include" })
+    .then(() => {
+      // Step 2: Redirect to Keycloak logout endpoint
+      window.location.href = keycloakLogoutUrl;
+    })
+    .catch((err) => {
+      console.error("Logout failed", err);
+      window.location.href = keycloakLogoutUrl; // Fallback redirect
+    });
+};
+```
+
+### **Call the Function on Logout Button**
+```tsx
+<button onClick={logout}>Logout</button>
+```
+
+---
+
+## **3. Redirect Back to Your App**
+Ensure Keycloak allows redirection after logout by setting up the valid redirect URI.
+- Go to **Keycloak Admin Panel** → Clients → Your Client → **Advanced Settings**
+- Set `Valid post logout redirect URIs` to match your app's URL (e.g., `https://yourapp.example.com`).
+
+---
+
+### **Additional Notes**
+- If `oauth2-proxy` is behind an **ingress controller**, make sure `/oauth2/sign_out` is properly exposed.
+- Test in an **incognito browser** to ensure the logout fully clears the session.
+
+Would you like help debugging any specific issues? 🚀
