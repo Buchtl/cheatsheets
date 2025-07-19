@@ -19,3 +19,36 @@ Then:
 ```bash
 sudo exportfs -ra
 ```
+
+## Setup UFW Firewall
+
+### Deny All
+```
+sudo ufw deny 111/tcp
+sudo ufw deny 111/udp
+sudo ufw deny 2049/tcp
+sudo ufw deny 2049/udp
+sudo ufw deny 20048/tcp
+sudo ufw deny 20048/udp
+```
+### Allow for 1 address
+```
+sudo ufw allow from 192.168.1.10 to any port 111 proto tcp
+sudo ufw allow from 192.168.1.10 to any port 111 proto udp
+sudo ufw allow from 192.168.1.10 to any port 2049 proto tcp
+sudo ufw allow from 192.168.1.10 to any port 2049 proto udp
+sudo ufw allow from 192.168.1.10 to any port 20048 proto tcp
+sudo ufw allow from 192.168.1.10 to any port 20048 proto udp
+```
+
+### Reload
+```
+sudo ufw reload
+```
+
+### Check Status
+```
+sudo ufw reload
+sudo ufw status verbose
+rpcinfo -p
+```
