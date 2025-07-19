@@ -8,7 +8,7 @@ sudo mkdir -p /srv/nfs/export
 sudo chown nobody:nogroup /srv/nfs/export
 ```
 
-`/etc/exports`:
+`/etc/exports` (192.168.1.0/24 would be the allowed nfs-clients):
 
 ```
 /srv/nfs/export 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
