@@ -51,6 +51,9 @@ sudo ufw reload
 sudo ufw reload
 sudo ufw status verbose
 rpcinfo -p
+
+# to monitor incoming requests e.g.
+sudo tcpdump -n -i enp0s3 port 2049
 ```
 
 ## Mount nfs-share in Docker Compose/Swarm
