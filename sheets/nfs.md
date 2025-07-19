@@ -50,6 +50,7 @@ sudo ufw reload
 ```
 sudo ufw reload
 sudo ufw status verbose
+sudo ufw status numbered
 rpcinfo -p
 
 # to monitor incoming requests e.g.
