@@ -52,3 +52,36 @@ sudo ufw reload
 sudo ufw status verbose
 rpcinfo -p
 ```
+
+## Mount nfs-share in Docker Compose/Swarm
+
+### Dockerfile for example client
+```
+FROM ubuntu:24.04
+
+RUN groupadd -g 2000 nfs && \
+    useradd -rm -d /home/nfs -s /bin/bash -u 2000 nfs -g nfs
+
+USER nfs
+
+CMD bash -c "tail -f /dev/null"
+
+```
+
+### Starting the service with mounted nfs-share
+```
+services:
+  nfs-client:
+    build: .
+    image: nfs-client:01
+    container_name: nfs-client
+    volumes:
+      - nfs-filestorage:/filestorge
+volumes:
+  nfs-filestorage:
+    driver: local
+    driver_opts:
+      type: "nfs"
+      o: "addr=192.168.2.142,nfsvers=4,hard,rw"
+      device: ":/srv/nfs/shared"
+```
