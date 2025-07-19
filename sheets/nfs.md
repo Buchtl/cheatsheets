@@ -30,6 +30,7 @@ sudo ufw allow from 192.168.1.10 to any port 111 proto tcp
 sudo ufw allow from 192.168.1.10 to any port 111 proto udp
 sudo ufw allow from 192.168.1.10 to any port 2049 proto tcp
 sudo ufw allow from 192.168.1.10 to any port 2049 proto udp
+# NFSv3
 sudo ufw allow from 192.168.1.10 to any port 20048 proto tcp
 sudo ufw allow from 192.168.1.10 to any port 20048 proto udp
 ```
