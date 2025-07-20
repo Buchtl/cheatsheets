@@ -20,3 +20,4 @@
 * [Kubernetes App](https://github.com/Buchtl/cheatsheets/blob/main/sheets/kubernetes-app.md)
 * [Convert HTML to PDF](https://github.com/Buchtl/cheatsheets/blob/main/sheets/html_to_pdf.md)
 * [NFS](https://github.com/Buchtl/cheatsheets/blob/main/sheets/nfs.md)
+* [Docker Swarm](https://github.com/Buchtl/cheatsheets/blob/main/sheets/docker-swarm.md)
