@@ -76,8 +76,13 @@ rpcinfo -p
 sudo tcpdump -n -i enp0s3 port 2049
 ```
 
-## Mount nfs-share in Docker Compose/Swarm
+## Mount nfs-share "bare metal"
+```
+sudo mkdir /mnt/nfs/shared
+sudo mount ${IP_NFS_SERVER}:/srv/nfs/shared /mnt/nfs/shared
+```
 
+## Mount nfs-share in Docker Compose/Swarm
 
 ### Example NFS-Client
 #### Docker Compse
