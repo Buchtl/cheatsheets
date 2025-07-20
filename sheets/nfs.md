@@ -14,8 +14,22 @@ sudo chown 2000:2000 /srv/nfs/shared
 /srv/nfs/shared 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash) \
                 192.168.2.0/24(rw,sync,no_subtree_check,no_root_squash)
 ```
+**Explanation**
+* **`rw`**
+  Clients in the allowed IP range can **read and write** to the shared directory.
 
-Then:
+* **`sync`**
+  The NFS server **synchronously writes changes to disk before replying** to the client. This ensures data integrity but may reduce performance compared to async.
+
+* **`no_subtree_check`**
+  Disables subtree checking. Without it, if the exported directory is a subdirectory of a larger filesystem, the server verifies that a file being accessed is inside the exported subtree. This check can cause performance overhead or errors during renames, so `no_subtree_check` improves performance and reliability.
+
+* **`no_root_squash`**
+  Normally, NFS maps remote root users to an anonymous user (like `nobody`) for security.
+  `no_root_squash` disables this behavior and lets remote root users have root privileges on the exported filesystem. This can be a security risk if clients are untrusted but is useful when root access is needed over NFS.
+
+
+**Then:**
 
 ```bash
 sudo exportfs -ra
