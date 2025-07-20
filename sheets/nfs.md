@@ -93,7 +93,6 @@ services:
     build: .
     image: ubuntu:24.04
     user: "2000:2000"
-    privileged: true
     command: >
       sh -c "env | grep IP_NFS_SERVER && tail -f /dev/null"
     environment:
