@@ -63,26 +63,16 @@ sudo tcpdump -n -i enp0s3 port 2049
 
 ## Mount nfs-share in Docker Compose/Swarm
 
-### Dockerfile for example client
-```
-FROM ubuntu:24.04
 
-RUN groupadd -g 2000 nfs && \
-    useradd -rm -d /home/nfs -s /bin/bash -u 2000 nfs -g nfs
-
-USER nfs
-
-CMD bash -c "tail -f /dev/null"
-
-```
-
-### Starting the service with mounted nfs-share
+### Example NFS-Client
 ```
 services:
   nfs-client:
     build: .
-    image: nfs-client:01
+    image: ubuntu:24.04
+    user: "2000:2000"
     container_name: nfs-client
+    command: "tail -f /dev/null"
     volumes:
       - nfs-filestorage:/filestorge
 volumes:
@@ -90,6 +80,6 @@ volumes:
     driver: local
     driver_opts:
       type: "nfs"
-      o: "addr=192.168.2.142,nfsvers=4,hard,rw"
+      o: "addr=${IP_NFS_SERVER},nfsvers=4,hard,rw"
       device: ":/srv/nfs/shared"
 ```
