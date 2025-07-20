@@ -89,7 +89,6 @@ sudo mount ${IP_NFS_SERVER}:/srv/nfs/shared /mnt/nfs/shared
 ```
 services:
   nfs-client:
-    build: .
     image: ubuntu:24.04
     user: "2000:2000"
     container_name: nfs-client
@@ -109,7 +108,6 @@ volumes:
 version: "3.9"  # Docker Swarm requires version 3.x
 services:
   nfs-client:
-    build: .
     image: ubuntu:24.04
     user: "2000:2000"
     command: >
