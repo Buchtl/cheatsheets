@@ -66,6 +66,7 @@ sudo tcpdump -n -i enp0s3 port 2049
 
 
 ### Example NFS-Client
+#### Docker Compse
 ```
 services:
   nfs-client:
@@ -83,4 +84,44 @@ volumes:
       type: "nfs"
       o: "addr=${IP_NFS_SERVER},nfsvers=4,hard,rw"
       device: ":/srv/nfs/shared"
+```
+#### Docker Swarm
+```
+version: "3.9"  # Docker Swarm requires version 3.x
+services:
+  nfs-client:
+    build: .
+    image: ubuntu:24.04
+    user: "2000:2000"
+    privileged: true
+    command: >
+      sh -c "env | grep IP_NFS_SERVER && tail -f /dev/null"
+    environment:
+      - IP_NFS_SERVER=${IP_NFS_SERVER}
+    volumes:
+      - nfs-filestorage:/filestorge
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+volumes:
+  nfs-filestorage:
+    driver: local
+    driver_opts:
+      type: "nfs"
+      o: "addr=${IP_NFS_SERVER},nfsvers=4,hard"
+      device: ":/srv/nfs/shared"
+```
+Script to deploy stack
+```
+#!/bin/bash
+IP=$1
+STACK_NAME=nfs-client
+
+docker swarm init --advertise-addr $IP
+# to include .env: <(docker-compose config)
+docker stack deploy -c <(docker-compose config) $STACK_NAME
+docker stack ls
+docker stack services $STACK_NAME
+docker stack ps $STACK_NAME
 ```
