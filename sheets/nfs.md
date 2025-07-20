@@ -4,14 +4,14 @@ Run `nfs-kernel-server` directly on your Ubuntu host, and **bind-mount** whateve
 
 ```bash
 sudo apt install nfs-kernel-server
-sudo mkdir -p /srv/nfs/export
-sudo chown 2000:2000 /srv/nfs/export
+sudo mkdir -p /srv/nfs/shared
+sudo chown 2000:2000 /srv/nfs/shared
 ```
 
 `/etc/exports` (192.168.1.0/24 and 192.168.2.0/24 would be the allowed nfs-clients):
 
 ```
-/srv/nfs/export 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash) \
+/srv/nfs/shared 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash) \
                 192.168.2.0/24(rw,sync,no_subtree_check,no_root_squash)
 ```
 
