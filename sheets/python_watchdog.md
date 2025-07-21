@@ -95,6 +95,221 @@ if __name__ == "__main__":
 * The XML must contain exactly one `<Filename>` and one `<Body>`. Let me know if multiple files per XML are needed.
 
 
+On **Ubuntu**, you can create a **standalone executable** (not a `.exe`, which is for Windows) from your Python script using a tool like [`PyInstaller`](https://pyinstaller.org/), which bundles the Python interpreter and dependencies into a single executable.
+
+---
+
+#Absolutely! Here's a complete guide to setting up your `xml-watcher` Python script as a **`systemd` service** on Ubuntu, assuming you want it to run as a **standalone binary** (built using PyInstaller) and automatically monitor `/data/input`.
+
+---
+
+## ✅ Overview
+
+You will:
+
+1. Convert the Python script to a binary using PyInstaller.
+2. Move the binary to a system path.
+3. Create a `systemd` service to run it on boot.
+4. Enable and manage the service.
+
+---
+
+## ✅ Step-by-Step Instructions
+
+---
+
+### 🧱 1. Build the Executable (Binary) with PyInstaller
+
+**Install PyInstaller** (if not done):
+
+```bash
+pip install pyinstaller
+```
+
+**Navigate to your script directory** and run:
+
+```bash
+pyinstaller --onefile xml_watcher.py
+```
+
+It creates:
+
+* `dist/xml_watcher` ← the binary you want
+* `build/`, `__pycache__`, etc. ← can be deleted
+
+---
+
+### 📂 2. Install the Binary to System Path
+
+Copy it to `/usr/local/bin`:
+
+```bash
+sudo cp dist/xml_watcher /usr/local/bin/xml-watcher
+sudo chmod +x /usr/local/bin/xml-watcher
+```
+
+You can now test it:
+
+```bash
+xml-watcher
+```
+
+---
+
+### 🛠️ 3. Create the `systemd` Service File
+
+Create the file:
+
+```bash
+sudo nano /etc/systemd/system/xml-watcher.service
+```
+
+Paste this:
+
+```ini
+[Unit]
+Description=XML Watcher Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/xml-watcher
+Restart=on-failure
+RestartSec=3
+User=root
+Group=root
+WorkingDirectory=/data/input
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+> ✅ **Important**:
+>
+> * `User` and `Group` should match who owns `/data/input`. Change `root` if needed.
+> * If you want logs written to a file instead, use `StandardOutput=file:/var/log/xml-watcher.log`.
+
+---
+
+### 🚀 4. Reload and Start the Service
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable xml-watcher
+sudo systemctl start xml-watcher
+```
+
+---
+
+### 🧪 5. Check the Logs
+
+```bash
+journalctl -u xml-watcher -f
+```
+
+> Press `Ctrl+C` to stop following logs.
+
+---
+
+### 🧹 6. Optional Clean Up
+
+If you're done with PyInstaller outputs:
+
+```bash
+rm -rf build/ dist/ __pycache__/ xml_watcher.spec
+```
+
+---
+
+## ✅ Summary
+
+| Task           | Command                                             |
+| -------------- | --------------------------------------------------- |
+| Build binary   | `pyinstaller --onefile xml_watcher.py`              |
+| Install binary | `sudo cp dist/xml_watcher /usr/local/bin/`          |
+| Create service | `sudo nano /etc/systemd/system/xml-watcher.service` |
+| Enable + Start | `sudo systemctl enable --now xml-watcher`           |
+| Check logs     | `journalctl -u xml-watcher -f`                      |
+
+---
+
+Would you like me to give you a sample XML file for testing?
+
+
+Here’s a **sample XML file** you can use to test your `xml-watcher` service. This XML includes a `<Filename>` and a `<Body>` tag with base64-encoded content.
+
+---
+
+## 📄 Sample XML: `sample_input.xml`
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Envelope>
+    <Header>
+        <Timestamp>2025-07-21T12:00:00Z</Timestamp>
+    </Header>
+    <Body>
+        VGhpcyBpcyBhIHRlc3QgZmlsZSBjb250ZW50Lg==
+    </Body>
+    <Filename>example.txt</Filename>
+</Envelope>
+```
+
+---
+
+## 📦 What's Inside?
+
+* `<Body>` contains this base64-encoded string:
+  `VGhpcyBpcyBhIHRlc3QgZmlsZSBjb250ZW50Lg==`
+
+* Which decodes to:
+  `This is a test file content.`
+
+* `<Filename>` is:
+  `example.txt`
+
+So after the watcher processes this file, it should create:
+
+```
+/data/input/example.txt
+```
+
+With the content:
+
+```
+This is a test file content.
+```
+
+---
+
+## 🧪 How to Test
+
+1. Place this file in the monitored directory:
+
+   ```bash
+   cp sample_input.xml /data/input/test_file.xml
+   ```
+
+2. Watch the logs:
+
+   ```bash
+   journalctl -u xml-watcher -f
+   ```
+
+3. Confirm the output file is created:
+
+   ```bash
+   cat /data/input/example.txt
+   ```
+
+---
+
+Would you like support for multiple `<Body>` / `<Filename>` pairs in a single XML file?
+
+
+
 # Here's how to run the Python watcher as a **systemd service** and also how to **containerize it using Docker**.
 
 ---
