@@ -23,3 +23,4 @@
 * [Oauth2-Apollo](https://github.com/Buchtl/cheatsheets/blob/main/sheets/oauth2-apollo.md)
 * [Oauth2-Proxy](https://github.com/Buchtl/cheatsheets/blob/main/sheets/oauth2-proxy.md)
 * [Python Watchdog](https://github.com/Buchtl/cheatsheets/blob/main/sheets/python_watchdog.md)
+* [UFW](https://github.com/Buchtl/cheatsheets/blob/main/sheets/ufw.md)
