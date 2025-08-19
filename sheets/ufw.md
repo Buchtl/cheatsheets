@@ -44,14 +44,13 @@ You should see:
 ```
 To                         Action      From
 --                         ------      ----
-9100                       ALLOW       203.0.113.42
+9100                       ALLOW       111.0.111.11
 9100                       DENY        Anywhere
 ```
 
 ---
 
-This guarantees only `203.0.113.42` can reach port 9100, everyone else is blocked.
+This guarantees only `111.0.111.11` can reach port 9100, everyone else is blocked.
 
 ---
 
-If you want, I can also give a **single-line command** that sets this up safely without manually deleting old rules. Do you want that?
