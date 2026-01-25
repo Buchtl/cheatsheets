@@ -24,5 +24,5 @@
 * [Oauth2-Proxy](https://github.com/Buchtl/cheatsheets/blob/main/sheets/oauth2-proxy.md)
 * [Prometheus](https://github.com/Buchtl/cheatsheets/blob/main/sheets/prometheus.md)
 * [Python Watchdog](https://github.com/Buchtl/cheatsheets/blob/main/sheets/python_watchdog.md)
-* [UTraefik](https://github.com/Buchtl/cheatsheets/blob/main/sheets/traefik.md)
+* [Traefik](https://github.com/Buchtl/cheatsheets/blob/main/sheets/traefik.md)
 * [UFW](https://github.com/Buchtl/cheatsheets/blob/main/sheets/ufw.md)
