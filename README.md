@@ -23,6 +23,7 @@
 * [Oauth2-Apollo](https://github.com/Buchtl/cheatsheets/blob/main/sheets/oauth2-apollo.md)
 * [Oauth2-Proxy](https://github.com/Buchtl/cheatsheets/blob/main/sheets/oauth2-proxy.md)
 * [Prometheus](https://github.com/Buchtl/cheatsheets/blob/main/sheets/prometheus.md)
+* [Postgres Troubleshooting](https://github.com/Buchtl/cheatsheets/blob/main/sheets/postgres-troubles.md)
 * [Python Watchdog](https://github.com/Buchtl/cheatsheets/blob/main/sheets/python_watchdog.md)
 * [Traefik](https://github.com/Buchtl/cheatsheets/blob/main/sheets/traefik.md)
 * [UFW](https://github.com/Buchtl/cheatsheets/blob/main/sheets/ufw.md)
