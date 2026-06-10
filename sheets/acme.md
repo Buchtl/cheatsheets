@@ -315,3 +315,118 @@ docker run --rm -it \
 ```
 
 and then replacing the generated root/intermediate certs with your own, rather than hand-writing the entire configuration. That avoids version-specific configuration issues.
+
+# Testing
+
+If ACME is enabled, you **cannot directly obtain a certificate with plain `curl`**, because ACME is a multi-step protocol (account registration, challenge validation, order finalization, certificate retrieval).
+
+However, you can use `curl` to verify that the ACME endpoint is working.
+
+### 1. Check the ACME directory
+
+```bash
+curl -k https://ca.example.com/acme/acme/directory
+```
+
+Expected output:
+
+```json
+{
+  "newNonce": "...",
+  "newAccount": "...",
+  "newOrder": "...",
+  "revokeCert": "...",
+  "keyChange": "..."
+}
+```
+
+If you get this JSON, the ACME provisioner is active.
+
+---
+
+### 2. Request a certificate using an ACME client
+
+The easiest test is with `step` itself:
+
+```bash
+step ca certificate \
+  test.example.com \
+  test.crt \
+  test.key \
+  --provisioner acme \
+  --acme https://ca.example.com/acme/acme/directory
+```
+
+Or using `lego`:
+
+```bash
+lego \
+  --server https://ca.example.com/acme/acme/directory \
+  --email admin@example.com \
+  --dns your-dns-provider \
+  --domains test.example.com \
+  run
+```
+
+---
+
+### 3. Fastest end-to-end test with OpenSSL + ACME client
+
+Install a lightweight ACME client such as `acme.sh`:
+
+```bash
+curl https://get.acme.sh | sh
+```
+
+Then:
+
+```bash
+acme.sh \
+  --server https://ca.example.com/acme/acme/directory \
+  --issue \
+  -d test.example.com \
+  --standalone
+```
+
+This exercises the entire ACME flow.
+
+---
+
+### 4. If you only want to test Step CA issuance (not ACME)
+
+Step CA can issue certificates directly through a provisioner:
+
+```bash
+step ca certificate \
+  test.example.com \
+  test.crt \
+  test.key
+```
+
+This bypasses ACME entirely and confirms that:
+
+* the imported root certificate is valid,
+* the imported intermediate certificate is valid,
+* the intermediate private key works,
+* Step CA can sign certificates.
+
+---
+
+### 5. Verify the issued certificate
+
+After obtaining a certificate:
+
+```bash
+openssl verify \
+  -CAfile root_ca.crt \
+  -untrusted intermediate_ca.crt \
+  test.crt
+```
+
+Expected:
+
+```text
+test.crt: OK
+```
+
+For a complete ACME test, I usually recommend **`acme.sh`** or **`lego`** because they exercise exactly what Traefik, Caddy, NGINX Proxy Manager, and other ACME clients will do against your Step CA server.
