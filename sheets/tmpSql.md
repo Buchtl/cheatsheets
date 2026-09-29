@@ -1095,3 +1095,118 @@ You'll probably get a curve something like:
 The interesting point is where the curve **flattens**. That's the number I'd use in production rather than blindly basing it on CPU count.
 
 And because your original query involves the `integer[]` datasource access check, I'd make **GIN/index experiments** part of the same benchmark. If you can get the query from work later, that's probably where we can make the biggest improvement.
+
+
+# ---- plan
+Yes — **now we have a very plausible explanation.**
+
+You effectively have two different situations:
+
+### pgAdmin
+
+One query at a time:
+
+```text
+pgAdmin
+   │
+   └── Query
+        │
+        └── Gather
+             ├── worker
+             ├── worker
+             ├── worker
+             ├── worker
+             ├── ...
+             └── ~8 cores
+```
+
+So PostgreSQL decides:
+
+> "This query is expensive enough; I'll parallelize it."
+
+### Spring application
+
+8 queries arrive concurrently:
+
+```text
+Spring
+ ├── Q1 → Seq Scan → ~1 core
+ ├── Q2 → Seq Scan → ~1 core
+ ├── Q3 → Seq Scan → ~1 core
+ ├── Q4 → Seq Scan → ~1 core
+ ├── Q5 → Seq Scan → ~1 core
+ ├── Q6 → Seq Scan → ~1 core
+ ├── Q7 → Seq Scan → ~1 core
+ └── Q8 → Seq Scan → ~1 core
+```
+
+That's **not necessarily because PostgreSQL has run out of parallel workers**.
+
+A `Seq Scan` can itself be **parallel** if it appears underneath a `Gather`:
+
+```text
+Gather
+  └── Parallel Seq Scan
+```
+
+What you're describing sounds more like the Spring execution plan is simply:
+
+```text
+Seq Scan
+```
+
+with **no `Gather`**.
+
+### And there's an important clue
+
+You said:
+
+> pgAdmin only lets me run one at once
+
+That's actually a huge difference.
+
+When you run the query alone, PostgreSQL sees:
+
+> "I've got plenty of CPU available."
+
+So it chooses:
+
+```text
+Gather
+  Workers Planned: 8
+```
+
+When Spring sends 8 queries simultaneously, PostgreSQL's planner/executor may decide that parallelizing each query isn't worthwhile because you're already running many competing queries.
+
+**But we shouldn't guess which reason it is.**
+
+The most useful experiment is very simple:
+
+Run the exact query from Spring while the 8-query batch is happening and inspect its plan.
+
+Even better, get the plan for the **same SQL and same parameters** in both cases:
+
+```sql
+EXPLAIN (ANALYZE, BUFFERS)
+...
+```
+
+Then compare:
+
+```text
+pgAdmin:
+Gather
+  Workers Planned: 8
+  Workers Launched: 8
+  Parallel Seq Scan
+
+Spring:
+Seq Scan
+```
+
+If that's what you see, **then we can work out why PostgreSQL chooses different plans**.
+
+And given your measured result of **25s → 3–4s with parallelism**, this is potentially much more important than simply increasing the number of PostgreSQL workers.
+
+
+# ----
