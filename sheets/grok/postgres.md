@@ -129,3 +129,42 @@ Now:
 - After changing the global setting, new connections pick it up (or restart if you want to be sure).
 
 This is the cleanest way to solve “50 counts at once, one of them is much heavier”.
+
+
+
+You set it with the table storage parameter `parallel_workers` (there is no per-table `max_parallel_workers_per_gather`).
+
+### Set a higher limit only for one table
+
+```sql
+ALTER TABLE your_very_heavy_table SET (parallel_workers = 16);
+```
+
+This tells the planner: “for scans of this table you may use up to 16 parallel workers.”
+
+### How it interacts with the global setting
+
+- The effective limit for a query is the **minimum** of:
+  - the global `max_parallel_workers_per_gather`
+  - the table’s `parallel_workers` (if set)
+  - available workers in the `max_parallel_workers` pool
+- If you set the global value low (e.g. 2) and the table to 16, queries on that table can still go up to 16.
+- Queries on other tables stay limited by the low global value.
+
+### Remove the override (back to default)
+
+```sql
+ALTER TABLE your_very_heavy_table RESET (parallel_workers);
+```
+
+### Check current setting
+
+```sql
+SELECT relname, reloptions
+FROM pg_class
+WHERE relname = 'your_very_heavy_table';
+```
+
+You will see `{parallel_workers=16}` if it is set.
+
+That’s the whole mechanism.
