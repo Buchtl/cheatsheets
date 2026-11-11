@@ -63,3 +63,95 @@ Noch besser: Entziehe dem lokalen (ungemounteten) Ordner auf der Systemplatte di
 5. Portainer wieder starten (docker service scale portainer_portainer=1)
 Der Effekt: Sollte das SAN jemals ausfallen oder beim Booten zu spät kommen, kann Docker keine leere Datenbank mehr in den lokalen Ordner schreiben. Der Container bricht stattdessen sauber ab und startet erst dann erfolgreich, wenn das SAN wirklich da ist.
 Wie ist dein SAN in der VM eingebunden – über iSCSI / Multipath in der VM selbst oder als durchgereichte virtuelle Festplatte vom Hypervisor (z. B. VMware/Proxmox)?
+
+
+Ja, absolut – genau für dieses Szenario ist das Portainer-Backup gemacht und rettet dich in unter einer Minute.
+Wenn Portainer nach einem SAN-Timing-Problem oder Update mit einer leeren Datenbank hochfährt, kannst du dein Backup direkt über die Weboberfläche wieder einspielen.
+
+Was passiert beim Wiederherstellen des Backups?
+
+• Alle Stacks kommen sofort zurück. Die .tar.gz-Backup-Datei enthält deine komplette portainer.db samt allen gespeicherten docker-compose.yml-Dateien und Umgebungsvariablen.
+• Die Verknüpfung zu laufenden Containern wird repariert. Sobald Portainer das Backup eingespielt hat und sich selbst neu startet, erkennt er deine auf dem Swarm laufenden Container wieder als seine eigenen Stacks. Der Status „Limited Control“ verschwindet sofort und du kannst sie wieder ganz normal bearbeiten.
+• Deine laufenden Dienste werden nicht unterbrochen. Das Einspielen des Backups überschreibt nur Portainers interne Verwaltung. Deine produktiven Container laufen währenddessen ohne eine Sekunde Ausfallzeit weiter.
+
+So spielst du das Backup im Notfall ein
+
+1. Portainer öffnen. Wenn Portainer leer gestartet ist, fragt er nach einem neuen Admin-Passwort (oder zeigt den leeren Login). Auf dem allerersten Einrichtungsbildschirm gibt es ganz unten direkt die Option „Restore Portainer from backup“.
+2. Falls du schon eingeloggt bist: Geh auf Settings -> General -> Back up Portainer, wähle den Tab Restore from backup, lade deine .tar.gz-Datei hoch und klicke auf Restore.
+3. Kurz warten: Portainer startet sich einmal intern neu (dauert ca. 10 Sekunden) und danach ist alles exakt so wie vor dem Update.
+
+Ein wichtiger Haken beim SAN-Problem
+
+Das Backup hilft dir perfekt – aber nur, wenn das SAN zum Zeitpunkt des Restores auch wirklich eingehängt ist.
+Wenn du das Backup einspielst, während das SAN noch nicht gemountet ist, schreibt Portainer das Backup in den falschen (lokalen) Ordner. Sobald das SAN danach doch noch eingehängt wird, überdeckt es diesen Ordner wieder. Mit der Kombination aus RequiresMountsFor (Systemd) und einer aktuellen Backup-Datei auf deinem PC bist du aber zu 100 % gegen jeden Datenverlust abgesichert.
+Möchtest du, dass ich dir zeige, wie du das Portainer-Backup über die Portainer-API automatisiert (z. B. per Cronjob) erstellen kannst, statt es jedes Mal manuell herunterzuladen?
+
+
+Um das Portainer-Backup vollautomatisch per Cronjob zu erstellen, nutzt du die Portainer-API zusammen mit einem API-Access-Token. So musst du nirgendwo ein Klartext-Passwort hinterlegen und bekommst regelmäßig eine fertige .tar.gz-Datei auf deinen Server (oder direkt auf dein SAN).
+
+Schritt 1: API-Token in Portainer erstellen
+
+1. Logge dich in Portainer ein und klicke oben rechts auf deinen Benutzernamen -> My account.
+2. Scrolle zum Abschnitt Access tokens und klicke auf Add access token.
+3. Vergib eine Beschreibung (z. B. auto-backup) und kopiere den angezeigten Token (beginnt meist mit ptr_...). Hinweis: Er wird nur einmal angezeigt.
+
+Schritt 2: Backup-Skript anlegen
+
+Erstelle auf deinem Manager-Node ein kleines Shell-Skript, z. B. unter /usr/local/bin/portainer-backup.sh:
+bash
+sudo nano /usr/local/bin/portainer-backup.sh
+Verwende Code mit Vorsicht.
+Füge folgenden Inhalt ein und passe die drei Variablen oben an deine Umgebung an:
+bash
+#!/bin/bash
+
+# --- Konfiguration ---
+PORTAINER_URL="https://deine-portainer-ip:9443"
+API_TOKEN="ptr_DEIN_KOPIERTER_TOKEN"
+BACKUP_DIR="/pfad/zu/deinem/backup-ordner"
+KEEP_DAYS=14
+# ---------------------
+
+mkdir -p "$BACKUP_DIR"
+DATE=$(date +"%Y-%m-%d_%H-%M")
+BACKUP_FILE="$BACKUP_DIR/portainer-backup_$DATE.tar.gz"
+
+# Backup über die Portainer API anfordern (-k erlaubt selbstsignierte SSL-Zertifikate)
+curl -k -s -X POST "$PORTAINER_URL/api/backup" \
+  -H "X-API-Key: $API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{}' \
+  -o "$BACKUP_FILE"
+
+# Prüfen, ob die Datei nicht leer ist (z.B. bei API-Fehler)
+if [ -s "$BACKUP_FILE" ]; then
+    # Alte Backups löschen, die älter als KEEP_DAYS sind
+    find "$BACKUP_DIR" -name "portainer-backup_*.tar.gz" -type f -mtime +$KEEP_DAYS -delete
+else
+    rm -f "$BACKUP_FILE"
+    echo "Fehler: Portainer Backup konnte nicht erstellt werden." >&2
+    exit 1
+fi
+Verwende Code mit Vorsicht.
+(Tipp: Speichere BACKUP_DIR am besten nicht im selben Ordner wie die Portainer-Daten, sondern in einem separaten Backup-Pfad oder auf einer lokalen Platte der VM, damit das Backup auch im Notfall griffbereit ist.)
+Mache das Skript ausführbar und teste es einmal manuell:
+bash
+sudo chmod 700 /usr/local/bin/portainer-backup.sh
+sudo /usr/local/bin/portainer-backup.sh
+ls -lh /pfad/zu/deinem/backup-ordner
+Verwende Code mit Vorsicht.
+Wenn dort eine .tar.gz-Datei mit einigen Megabytes liegt, funktioniert alles einwandfrei.
+
+Schritt 3: Cronjob einrichten
+
+Öffne die Crontab des Root-Users, damit das Skript automatisch läuft:
+bash
+sudo crontab -e
+Verwende Code mit Vorsicht.
+Füge ganz unten folgende Zeile hinzu, um das Backup zum Beispiel jeden Tag um 03:00 Uhr nachts auszuführen:
+cron
+0 3 * * * /usr/local/bin/portainer-backup.sh
+Verwende Code mit Vorsicht.
+Damit hast du jeden Morgen ein frisches, vollständiges Backup deiner gesamten Portainer-Konfiguration und aller Swarm-Stacks, ohne jemals wieder manuell daran denken zu müssen.
+Möchtest du das Backup im Skript zusätzlich noch verschlüsseln (Portainer unterstützt ein Passwort beim API-Backup), oder reicht dir die unverschlüsselte Ablage auf deinem internen Speicher?
+
