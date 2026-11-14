@@ -156,3 +156,66 @@ docker node ls
 Only if the manager is **already** in `Drain` state (i.e. you previously made it manager-only and it is not running any service tasks). In that case you can just upgrade and reboot.
 
 Some sources say you can simply reboot without draining and rely on restart policies, but that is less clean and can cause brief task interruptions. Draining first is the safer and recommended approach, especially with a single manager.
+
+
+**Das ist ein bekanntes Problem mit neueren Docker-/gRPC-Versionen und älteren Swarm-Clustern.**
+
+Neuere Docker-Versionen (mit gRPC-go ≥ 1.67) erzwingen ALPN (Application-Layer Protocol Negotiation, speziell das `h2`-Protokoll für HTTP/2) beim TLS-Handshake. Ältere Swarm-Manager werben dieses Protokoll in ihrer TLS-Konfiguration oft nicht korrekt an. Deshalb scheitert der Join mit einem Handshake-Fehler, der „alpn“ oder „missing selected ALPN property“ enthält.
+
+### Lösung auf der neuen VM (Workaround)
+
+Setze die Umgebungsvariable `GRPC_ENFORCE_ALPN_ENABLED=false` für den Docker-Daemon:
+
+```bash
+sudo mkdir -p /etc/systemd/system/docker.service.d
+
+sudo tee /etc/systemd/system/docker.service.d/alpn-workaround.conf > /dev/null <<EOF
+[Service]
+Environment="GRPC_ENFORCE_ALPN_ENABLED=false"
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+```
+
+Danach erneut joinen:
+
+```bash
+docker swarm join --token <TOKEN> <MANAGER-IP>:2377
+```
+
+(Optional `--advertise-addr <IP-der-neuen-VM>` mitgeben, falls die automatische Erkennung nicht stimmt.)
+
+### Weitere Checks
+
+1. **Docker-Versionen vergleichen**
+   ```bash
+   docker version
+   ```
+   Auf Manager und neuer VM. Ideal sind möglichst gleiche oder zumindest kompatible Versionen. Der offizielle Fix in SwarmKit (NextProtos/`h2` in der Server-TLS-Config) kam Anfang 2025.
+
+2. **Ports öffnen** (auf allen Nodes und Firewalls):
+   - 2377/tcp (Swarm-Management)
+   - 7946/tcp + 7946/udp (Node-Kommunikation)
+   - 4789/udp (VXLAN-Overlay)
+
+3. **Verbindung testen**
+   ```bash
+   telnet <MANAGER-IP> 2377
+   # oder
+   nc -zv <MANAGER-IP> 2377
+   ```
+
+4. **Logs anschauen**
+   ```bash
+   journalctl -u docker -f
+   # oder
+   docker info
+   ```
+
+### Langfristig
+
+- Den alten Swarm-Cluster auf eine neuere Docker-Version upgraden (dann ist der Workaround auf neuen Nodes nicht mehr nötig).
+- Alternativ die neue VM vorerst auf eine ältere Docker-Version pinnen, die noch kompatibel ist.
+
+Der Workaround mit `GRPC_ENFORCE_ALPN_ENABLED=false` ist der übliche und gut dokumentierte Weg für genau diesen ALPN-Handshake-Fehler zwischen alten und neuen Swarm-Nodes.
